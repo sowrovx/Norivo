@@ -36,10 +36,12 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
       widget.destinationName ?? 'Butterworth Railway Station';
 
   void _onStartJourney() {
+    FocusScope.of(context).unfocus();
     Navigator.of(context).pushNamed(AppRouter.activeJourney);
   }
 
   void _onPreviewAlarm() {
+    FocusScope.of(context).unfocus();
     Navigator.of(context).pushNamed(AppRouter.alarmRinging);
   }
 
@@ -111,7 +113,10 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                       color: AppColors.onBackground,
                       size: 20,
                     ),
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () {
+                      FocusScope.of(context).unfocus();
+                      Navigator.of(context).pop();
+                    },
                     tooltip: 'Back',
                   ),
                   const SizedBox(width: 4),

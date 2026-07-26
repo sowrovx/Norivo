@@ -23,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentNavIndex = 0;
 
   void _onSearchTap() {
+    FocusScope.of(context).unfocus();
     Navigator.of(context).pushNamed(AppRouter.destinationSearch);
   }
 

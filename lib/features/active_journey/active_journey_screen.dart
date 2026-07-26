@@ -28,8 +28,10 @@ class ActiveJourneyScreen extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () =>
-                        Navigator.of(context).pushNamed(AppRouter.alarmSetup),
+                    onPressed: () {
+                      FocusScope.of(context).unfocus();
+                      Navigator.of(context).pushNamed(AppRouter.alarmSetup);
+                    },
                     icon: const Icon(Icons.arrow_back_ios_new_rounded),
                     tooltip: 'Back',
                   ),
@@ -192,9 +194,10 @@ class ActiveJourneyScreen extends StatelessWidget {
                     const SizedBox(height: 20),
                     PrimaryButton(
                       label: 'End Journey',
-                      onPressed: () => Navigator.of(
-                        context,
-                      ).pushNamed(AppRouter.alarmRinging),
+                      onPressed: () {
+                        FocusScope.of(context).unfocus();
+                        Navigator.of(context).pushNamed(AppRouter.alarmRinging);
+                      },
                       icon: Icons.stop_circle_rounded,
                     ),
                   ],

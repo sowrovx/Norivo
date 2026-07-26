@@ -126,10 +126,12 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen>
                 const SizedBox(height: 24),
                 PrimaryButton(
                   label: 'Stop Alarm',
-                  onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
-                    AppRouter.home,
-                    (route) => false,
-                  ),
+                  onPressed: () {
+                    FocusScope.of(context).unfocus();
+                    Navigator.of(
+                      context,
+                    ).pushNamedAndRemoveUntil(AppRouter.home, (route) => false);
+                  },
                   icon: Icons.stop_circle_rounded,
                 ),
                 const SizedBox(height: 12),

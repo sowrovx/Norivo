@@ -44,6 +44,7 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
   }
 
   void _onContinuePressed() {
+    FocusScope.of(context).unfocus();
     if (_selectedDestination == null && _searchController.text.trim().isEmpty) {
       return;
     }
@@ -75,7 +76,10 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                       color: AppColors.onBackground,
                       size: 20,
                     ),
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () {
+                      FocusScope.of(context).unfocus();
+                      Navigator.of(context).pop();
+                    },
                     tooltip: 'Back',
                   ),
                   const SizedBox(width: 4),
@@ -120,8 +124,7 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                     SearchField(
                       hintText: 'Search station, city or place...',
                       readOnly: false,
-                      isFocused: true,
-                      autofocus: false,
+                      isFocused: false,
                       controller: _searchController,
                       onChanged: (val) {
                         setState(() {

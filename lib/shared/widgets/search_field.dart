@@ -16,7 +16,6 @@ class SearchField extends StatelessWidget {
     this.readOnly = true,
     this.controller,
     this.isFocused = false,
-    this.autofocus = false,
     this.borderColor,
   });
 
@@ -27,7 +26,6 @@ class SearchField extends StatelessWidget {
   final bool readOnly;
   final TextEditingController? controller;
   final bool isFocused;
-  final bool autofocus;
   final Color? borderColor;
 
   @override
@@ -80,7 +78,6 @@ class SearchField extends StatelessWidget {
                       : TextField(
                           controller: controller,
                           onChanged: onChanged,
-                          autofocus: autofocus,
                           style: AppTextStyles.body.copyWith(fontSize: 15),
                           decoration: InputDecoration(
                             hintText: hintText,

@@ -13,6 +13,8 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
+        primary: AppColors.primary,
+        surface: AppColors.surface,
         brightness: Brightness.light,
       ),
       scaffoldBackgroundColor: AppColors.background,
@@ -20,6 +22,7 @@ class AppTheme {
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.onBackground,
         elevation: 0,
+        scrolledUnderElevation: 0,
       ),
       textTheme: Typography.material2021().black,
     );

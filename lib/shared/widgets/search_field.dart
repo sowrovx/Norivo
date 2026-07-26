@@ -15,6 +15,9 @@ class SearchField extends StatelessWidget {
     this.onChanged,
     this.readOnly = true,
     this.controller,
+    this.isFocused = false,
+    this.autofocus = false,
+    this.borderColor,
   });
 
   final String hintText;
@@ -23,15 +26,22 @@ class SearchField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final bool readOnly;
   final TextEditingController? controller;
+  final bool isFocused;
+  final bool autofocus;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
+    final effectiveBorderColor =
+        borderColor ?? (isFocused ? AppColors.primary : AppColors.border);
+    final borderWidth = isFocused || borderColor != null ? 1.5 : 1.0;
+
     return Container(
       height: 56,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppColors.border, width: 1),
+        border: Border.all(color: effectiveBorderColor, width: borderWidth),
         boxShadow: const [
           BoxShadow(
             color: AppColors.cardShadow,
@@ -70,11 +80,12 @@ class SearchField extends StatelessWidget {
                       : TextField(
                           controller: controller,
                           onChanged: onChanged,
+                          autofocus: autofocus,
                           style: AppTextStyles.body.copyWith(fontSize: 15),
                           decoration: InputDecoration(
                             hintText: hintText,
                             hintStyle: AppTextStyles.subtitle.copyWith(
-                              color: AppColors.textSecondary,
+                              color: AppColors.textMuted,
                               fontSize: 15,
                             ),
                             border: InputBorder.none,

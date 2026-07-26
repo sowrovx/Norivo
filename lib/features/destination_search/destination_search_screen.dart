@@ -24,22 +24,10 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
 
   // Placeholder data for recent searches matching Figma
   final List<_RecentSearchItem> _recentSearches = const [
-    _RecentSearchItem(
-      title: 'Butterworth Railway Station',
-      subtitle: 'Penang',
-    ),
-    _RecentSearchItem(
-      title: 'KL Sentral',
-      subtitle: 'Kuala Lumpur',
-    ),
-    _RecentSearchItem(
-      title: 'Universiti Albukhary',
-      subtitle: 'Alor Setar',
-    ),
-    _RecentSearchItem(
-      title: 'Home',
-      subtitle: 'Sylhet',
-    ),
+    _RecentSearchItem(title: 'Butterworth Railway Station', subtitle: 'Penang'),
+    _RecentSearchItem(title: 'KL Sentral', subtitle: 'Kuala Lumpur'),
+    _RecentSearchItem(title: 'Universiti Albukhary', subtitle: 'Alor Setar'),
+    _RecentSearchItem(title: 'Home', subtitle: 'Sylhet'),
   ];
 
   @override
@@ -59,18 +47,17 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
     if (_selectedDestination == null && _searchController.text.trim().isEmpty) {
       return;
     }
-    final destination =
-        _selectedDestination ?? _searchController.text.trim();
-    Navigator.of(context).pushNamed(
-      AppRouter.alarmSetup,
-      arguments: destination,
-    );
+    final destination = _selectedDestination ?? _searchController.text.trim();
+    Navigator.of(
+      context,
+    ).pushNamed(AppRouter.alarmSetup, arguments: destination);
   }
 
   @override
   Widget build(BuildContext context) {
     final hasSelection =
-        _selectedDestination != null || _searchController.text.trim().isNotEmpty;
+        _selectedDestination != null ||
+        _searchController.text.trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -160,13 +147,16 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                           _FilterChip(
                             icon: Icons.school_outlined,
                             label: 'University',
-                            onTap: () => _selectDestination('Universiti Albukhary'),
+                            onTap: () =>
+                                _selectDestination('Universiti Albukhary'),
                           ),
                           const SizedBox(width: 8),
                           _FilterChip(
                             icon: Icons.access_time_rounded,
                             label: 'Recent',
-                            onTap: () => _selectDestination('Butterworth Railway Station'),
+                            onTap: () => _selectDestination(
+                              'Butterworth Railway Station',
+                            ),
                           ),
                           const SizedBox(width: 8),
                           _FilterChip(
@@ -191,14 +181,11 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: _recentSearches.length,
-                      separatorBuilder: (_, _) => const Divider(
-                        color: AppColors.border,
-                        height: 1,
-                      ),
+                      separatorBuilder: (_, _) =>
+                          const Divider(color: AppColors.border, height: 1),
                       itemBuilder: (context, index) {
                         final item = _recentSearches[index];
-                        final isSelected =
-                            _selectedDestination == item.title;
+                        final isSelected = _selectedDestination == item.title;
 
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(
@@ -230,7 +217,9 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                           ),
                           subtitle: Text(
                             item.subtitle,
-                            style: AppTextStyles.subtitle.copyWith(fontSize: 13),
+                            style: AppTextStyles.subtitle.copyWith(
+                              fontSize: 13,
+                            ),
                           ),
                           trailing: const Icon(
                             Icons.chevron_right_rounded,
@@ -360,11 +349,7 @@ class _FilterChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                color: AppColors.primary,
-                size: 16,
-              ),
+              Icon(icon, color: AppColors.primary, size: 16),
               const SizedBox(width: 6),
               Text(
                 label,
@@ -383,10 +368,7 @@ class _FilterChip extends StatelessWidget {
 }
 
 class _RecentSearchItem {
-  const _RecentSearchItem({
-    required this.title,
-    required this.subtitle,
-  });
+  const _RecentSearchItem({required this.title, required this.subtitle});
 
   final String title;
   final String subtitle;

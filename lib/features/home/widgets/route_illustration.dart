@@ -21,9 +21,7 @@ class RouteIllustration extends StatelessWidget {
         child: SizedBox(
           width: 80,
           height: 60,
-          child: CustomPaint(
-            painter: _RoutePathPainter(),
-          ),
+          child: CustomPaint(painter: _RoutePathPainter()),
         ),
       ),
     );

@@ -9,10 +9,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../shared/widgets/primary_button.dart';
 
 class AlarmSetupScreen extends StatefulWidget {
-  const AlarmSetupScreen({
-    super.key,
-    this.destinationName,
-  });
+  const AlarmSetupScreen({super.key, this.destinationName});
 
   final String? destinationName;
 
@@ -53,7 +50,12 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        final sounds = ['Default', 'Gentle Chime', 'Radar Alert', 'Subtle Bell'];
+        final sounds = [
+          'Default',
+          'Gentle Chime',
+          'Radar Alert',
+          'Subtle Bell',
+        ];
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -70,8 +72,10 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                   (sound) => ListTile(
                     title: Text(sound, style: AppTextStyles.body),
                     trailing: _selectedSound == sound
-                        ? const Icon(Icons.check_rounded,
-                            color: AppColors.primary)
+                        ? const Icon(
+                            Icons.check_rounded,
+                            color: AppColors.primary,
+                          )
                         : null,
                     onTap: () {
                       setState(() {
@@ -207,10 +211,7 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          const Divider(
-                            color: AppColors.border,
-                            height: 1,
-                          ),
+                          const Divider(color: AppColors.border, height: 1),
                           const SizedBox(height: 16),
                           Row(
                             children: [
@@ -335,90 +336,90 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                         borderRadius: BorderRadius.circular(24),
                         child: Column(
                           children: [
-                          ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 2,
+                            ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 2,
+                              ),
+                              onTap: _showSoundPicker,
+                              title: const Text(
+                                'Alarm Sound',
+                                style: AppTextStyles.body,
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _selectedSound,
+                                    style: AppTextStyles.subtitle,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: AppColors.textMuted,
+                                    size: 20,
+                                  ),
+                                ],
+                              ),
                             ),
-                            onTap: _showSoundPicker,
-                            title: const Text(
-                              'Alarm Sound',
-                              style: AppTextStyles.body,
+                            const Divider(color: AppColors.border, height: 1),
+                            SwitchListTile.adaptive(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 2,
+                              ),
+                              value: _isVibrationOn,
+                              activeTrackColor: AppColors.primary,
+                              onChanged: (val) {
+                                setState(() {
+                                  _isVibrationOn = val;
+                                });
+                              },
+                              title: const Text(
+                                'Vibration',
+                                style: AppTextStyles.body,
+                              ),
                             ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _selectedSound,
-                                  style: AppTextStyles.subtitle,
-                                ),
-                                const SizedBox(width: 4),
-                                const Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: AppColors.textMuted,
-                                  size: 20,
-                                ),
-                              ],
+                            const Divider(color: AppColors.border, height: 1),
+                            SwitchListTile.adaptive(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 2,
+                              ),
+                              value: _isVoiceOn,
+                              activeTrackColor: AppColors.primary,
+                              onChanged: (val) {
+                                setState(() {
+                                  _isVoiceOn = val;
+                                });
+                              },
+                              title: const Text(
+                                'Voice Announcement',
+                                style: AppTextStyles.body,
+                              ),
                             ),
-                          ),
-                          const Divider(color: AppColors.border, height: 1),
-                          SwitchListTile.adaptive(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 2,
+                            const Divider(color: AppColors.border, height: 1),
+                            SwitchListTile.adaptive(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 2,
+                              ),
+                              value: _isRepeatOn,
+                              activeTrackColor: AppColors.primary,
+                              onChanged: (val) {
+                                setState(() {
+                                  _isRepeatOn = val;
+                                });
+                              },
+                              title: const Text(
+                                'Repeat Alarm',
+                                style: AppTextStyles.body,
+                              ),
                             ),
-                            value: _isVibrationOn,
-                            activeTrackColor: AppColors.primary,
-                            onChanged: (val) {
-                              setState(() {
-                                _isVibrationOn = val;
-                              });
-                            },
-                            title: const Text(
-                              'Vibration',
-                              style: AppTextStyles.body,
-                            ),
-                          ),
-                          const Divider(color: AppColors.border, height: 1),
-                          SwitchListTile.adaptive(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 2,
-                            ),
-                            value: _isVoiceOn,
-                            activeTrackColor: AppColors.primary,
-                            onChanged: (val) {
-                              setState(() {
-                                _isVoiceOn = val;
-                              });
-                            },
-                            title: const Text(
-                              'Voice Announcement',
-                              style: AppTextStyles.body,
-                            ),
-                          ),
-                          const Divider(color: AppColors.border, height: 1),
-                          SwitchListTile.adaptive(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 2,
-                            ),
-                            value: _isRepeatOn,
-                            activeTrackColor: AppColors.primary,
-                            onChanged: (val) {
-                              setState(() {
-                                _isRepeatOn = val;
-                              });
-                            },
-                            title: const Text(
-                              'Repeat Alarm',
-                              style: AppTextStyles.body,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
 
                     const SizedBox(height: 24),
 

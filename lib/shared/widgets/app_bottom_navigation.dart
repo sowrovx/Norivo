@@ -7,11 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 
 class AppBottomNavigation extends StatelessWidget {
-  const AppBottomNavigation({
-    super.key,
-    this.currentIndex = 0,
-    this.onTap,
-  });
+  const AppBottomNavigation({super.key, this.currentIndex = 0, this.onTap});
 
   final int currentIndex;
   final ValueChanged<int>? onTap;
@@ -44,9 +40,7 @@ class AppBottomNavigation extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.surface,
-        border: Border(
-          top: BorderSide(color: AppColors.border, width: 1),
-        ),
+        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: SafeArea(
         top: false,

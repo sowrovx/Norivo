@@ -4,8 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:norivo/features/alarm_setup/alarm_setup_screen.dart';
 
 void main() {
-  testWidgets('renders AlarmSetupScreen with destination and wake-up options',
-      (WidgetTester tester) async {
+  testWidgets('renders AlarmSetupScreen with destination and wake-up options', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: AlarmSetupScreen(destinationName: 'Butterworth Railway Station'),

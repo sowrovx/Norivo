@@ -54,10 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
-                      Text(
-                        'Good Morning 👋',
-                        style: AppTextStyles.heading1,
-                      ),
+                      Text('Good Morning 👋', style: AppTextStyles.heading1),
                       SizedBox(height: 4),
                       Text(
                         'Ready for your next journey?',
@@ -135,10 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 28),
 
               // Today's Journey Section
-              const Text(
-                "Today's Journey",
-                style: AppTextStyles.sectionHeader,
-              ),
+              const Text("Today's Journey", style: AppTextStyles.sectionHeader),
               const SizedBox(height: 12),
 
               Container(
@@ -181,16 +175,15 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 28),
 
               // Travel Insights Section
-              const Text(
-                'Travel Insights',
-                style: AppTextStyles.sectionHeader,
-              ),
+              const Text('Travel Insights', style: AppTextStyles.sectionHeader),
               const SizedBox(height: 12),
 
               Container(
                 width: double.infinity,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 20,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(24),
@@ -216,10 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: AppTextStyles.bodyMuted,
                           ),
                           SizedBox(height: 4),
-                          Text(
-                            '14 journeys',
-                            style: AppTextStyles.statValue,
-                          ),
+                          Text('14 journeys', style: AppTextStyles.statValue),
                         ],
                       ),
                     ),
@@ -253,10 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: const [
-                                Text(
-                                  '99%',
-                                  style: AppTextStyles.statValue,
-                                ),
+                                Text('99%', style: AppTextStyles.statValue),
                                 Text(
                                   'Wake-up accuracy',
                                   style: AppTextStyles.bodyMuted,

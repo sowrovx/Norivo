@@ -31,8 +31,9 @@ class AppRouter {
           builder: (_) => const DestinationSearchScreen(),
         );
       case alarmSetup:
+        final destinationName = settings.arguments as String?;
         return MaterialPageRoute<void>(
-          builder: (_) => const AlarmSetupScreen(),
+          builder: (_) => AlarmSetupScreen(destinationName: destinationName),
         );
       case activeJourney:
         return MaterialPageRoute<void>(

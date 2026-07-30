@@ -12,7 +12,8 @@ void main() {
     expect(find.text('Norivo'), findsOneWidget);
     expect(find.byType(Scaffold), findsOneWidget);
 
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
 
     expect(find.text('Good Morning 👋'), findsOneWidget);
     expect(find.text("Today's Journey"), findsOneWidget);

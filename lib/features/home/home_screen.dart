@@ -10,6 +10,7 @@ import '../../shared/widgets/app_bottom_navigation.dart';
 import '../../shared/widgets/primary_button.dart';
 import '../../shared/widgets/quick_action_card.dart';
 import '../../shared/widgets/search_field.dart';
+import 'widgets/home_location_section.dart';
 import 'widgets/route_illustration.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -172,6 +173,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+
+              const SizedBox(height: 28),
+
+              const HomeLocationSection(),
 
               const SizedBox(height: 28),
 

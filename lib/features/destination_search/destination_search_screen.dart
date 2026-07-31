@@ -1,9 +1,15 @@
 /// Destination Search Screen matching the Figma design reference.
 library;
 
-import 'package:flutter/material.dart';
+import 'dart:async';
 
+import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+
+import '../../core/models/destination_place.dart';
 import '../../core/router/app_router.dart';
+import '../../core/services/destination_search_service.dart';
+import '../../core/services/location_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../shared/widgets/primary_button.dart';
@@ -20,9 +26,7 @@ class DestinationSearchScreen extends StatefulWidget {
 
 class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
-  String? _selectedDestination;
-
-  // Placeholder data for recent searches matching Figma
+  final DestinationSearchService _searchService = DestinationSearchService();
   final List<_RecentSearchItem> _recentSearches = const [
     _RecentSearchItem(title: 'Butterworth Railway Station', subtitle: 'Penang'),
     _RecentSearchItem(title: 'KL Sentral', subtitle: 'Kuala Lumpur'),
@@ -30,35 +34,145 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
     _RecentSearchItem(title: 'Home', subtitle: 'Sylhet'),
   ];
 
+  Timer? _debounceTimer;
+  StreamSubscription<Position>? _positionSubscription;
+  DestinationPlace? _selectedPlace;
+  List<DestinationPlace> _searchResults = const [];
+  bool _isLoading = false;
+  String? _errorMessage;
+  Position? _currentPosition;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshCurrentLocation();
+    _initPositionSubscription();
+  }
+
+  Future<void> _initPositionSubscription() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+      final permission = await LocationService.checkAndRequestPermission();
+      if (permission != LocationPermissionState.granted) return;
+
+      _positionSubscription = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      ).listen(
+        (position) {
+          if (!mounted) return;
+          setState(() {
+            _currentPosition = position;
+          });
+        },
+        onError: (error) {
+          debugPrint('Location stream error: $error');
+        },
+      );
+    } catch (error) {
+      debugPrint('Error initializing position stream: $error');
+    }
+  }
+
   @override
   void dispose() {
+    _debounceTimer?.cancel();
+    _positionSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
-  void _selectDestination(String title) {
+  Future<void> _refreshCurrentLocation() async {
+    try {
+      final position = await LocationService.getCurrentPosition();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _currentPosition = position;
+      });
+    } catch (error) {
+      debugPrint('Current location unavailable: $error');
+    }
+  }
+
+  void _selectDestination(DestinationPlace place) {
     setState(() {
-      _selectedDestination = title;
-      _searchController.text = title;
+      _selectedPlace = place;
+      _searchController.text = place.name;
+      _errorMessage = null;
     });
   }
 
   void _onContinuePressed() {
     FocusScope.of(context).unfocus();
-    if (_selectedDestination == null && _searchController.text.trim().isEmpty) {
+    if (_selectedPlace == null) {
       return;
     }
-    final destination = _selectedDestination ?? _searchController.text.trim();
+
     Navigator.of(
       context,
-    ).pushNamed(AppRouter.alarmSetup, arguments: destination);
+    ).pushNamed(AppRouter.alarmSetup, arguments: _selectedPlace);
+  }
+
+  void _searchDestinations(String query) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 450), () async {
+      if (!mounted) {
+        return;
+      }
+
+      if (query.trim().isEmpty) {
+        setState(() {
+          _searchResults = const [];
+          _isLoading = false;
+          _errorMessage = null;
+        });
+        return;
+      }
+
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      try {
+        final results = await _searchService.search(query);
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _searchResults = results;
+          _isLoading = false;
+          _errorMessage = results.isEmpty ? 'No matching places found.' : null;
+        });
+      } on DestinationSearchException catch (error) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _searchResults = const [];
+          _isLoading = false;
+          _errorMessage = error.message;
+        });
+      } catch (error) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _searchResults = const [];
+          _isLoading = false;
+          _errorMessage = 'Unable to search destinations right now.';
+        });
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasSelection =
-        _selectedDestination != null ||
-        _searchController.text.trim().isNotEmpty;
+    final hasSelection = _selectedPlace != null;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -93,19 +207,6 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                       ),
                     ),
                   ),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryLight,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.mic_none_rounded,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -127,9 +228,13 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                       isFocused: false,
                       controller: _searchController,
                       onChanged: (val) {
-                        setState(() {
-                          _selectedDestination = val.isEmpty ? null : val;
-                        });
+                        if (_selectedPlace != null &&
+                            _searchController.text != _selectedPlace!.name) {
+                          setState(() {
+                            _selectedPlace = null;
+                          });
+                        }
+                        _searchDestinations(val);
                       },
                     ),
 
@@ -144,34 +249,153 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                           _FilterChip(
                             icon: Icons.home_outlined,
                             label: 'Home',
-                            onTap: () => _selectDestination('Home'),
+                            onTap: () {
+                              _searchController.text = 'Home';
+                              _searchDestinations('Home');
+                            },
                           ),
                           const SizedBox(width: 8),
                           _FilterChip(
                             icon: Icons.school_outlined,
                             label: 'University',
-                            onTap: () =>
-                                _selectDestination('Universiti Albukhary'),
+                            onTap: () {
+                              _searchController.text = 'University';
+                              _searchDestinations('University');
+                            },
                           ),
                           const SizedBox(width: 8),
                           _FilterChip(
                             icon: Icons.access_time_rounded,
                             label: 'Recent',
-                            onTap: () => _selectDestination(
-                              'Butterworth Railway Station',
-                            ),
+                            onTap: () {
+                              _searchController.text =
+                                  'Butterworth Railway Station';
+                              _searchDestinations(
+                                'Butterworth Railway Station',
+                              );
+                            },
                           ),
                           const SizedBox(width: 8),
                           _FilterChip(
                             icon: Icons.my_location_rounded,
                             label: 'Current Location',
-                            onTap: () => _selectDestination('Current Location'),
+                            onTap: () {
+                              _searchController.text = 'Current Location';
+                              _searchDestinations('Current Location');
+                            },
                           ),
                         ],
                       ),
                     ),
 
                     const SizedBox(height: 24),
+
+                    if (_isLoading ||
+                        _errorMessage != null ||
+                        _searchResults.isNotEmpty) ...[
+                      const Text(
+                        'Search Results',
+                        style: AppTextStyles.sectionHeader,
+                      ),
+                      const SizedBox(height: 12),
+                      if (_isLoading)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (_errorMessage != null)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(
+                            _errorMessage!,
+                            style: AppTextStyles.bodyMuted,
+                          ),
+                        )
+                      else
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _searchResults.length,
+                          separatorBuilder: (_, _) =>
+                              const Divider(color: AppColors.border, height: 1),
+                          itemBuilder: (context, index) {
+                            final place = _searchResults[index];
+                            final isSelected =
+                                _selectedPlace?.name == place.name &&
+                                _selectedPlace?.latitude == place.latitude &&
+                                _selectedPlace?.longitude == place.longitude;
+
+                            final distanceText = _currentPosition == null
+                                ? null
+                                : DestinationSearchService.formatDistance(
+                                    Geolocator.distanceBetween(
+                                      _currentPosition!.latitude,
+                                      _currentPosition!.longitude,
+                                      place.latitude,
+                                      place.longitude,
+                                    ),
+                                  );
+
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 4,
+                              ),
+                              onTap: () => _selectDestination(place),
+                              leading: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primaryLight,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.place_outlined,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                              ),
+                              title: Text(
+                                place.name,
+                                style: AppTextStyles.cardTitle.copyWith(
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.onBackground,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              subtitle: distanceText == null
+                                  ? Text(
+                                      place.address,
+                                      style: AppTextStyles.subtitle.copyWith(
+                                        fontSize: 13,
+                                      ),
+                                    )
+                                  : Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            place.address,
+                                            style: AppTextStyles.subtitle
+                                                .copyWith(fontSize: 13),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          distanceText,
+                                          style: AppTextStyles.subtitle
+                                              .copyWith(
+                                                fontSize: 12,
+                                                color: AppColors.primary,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                            );
+                          },
+                        ),
+                      const SizedBox(height: 24),
+                    ],
 
                     // Recent Searches Section
                     const Text(
@@ -188,14 +412,17 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                           const Divider(color: AppColors.border, height: 1),
                       itemBuilder: (context, index) {
                         final item = _recentSearches[index];
-                        final isSelected = _selectedDestination == item.title;
+                        final isSelected = _selectedPlace?.name == item.title;
 
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 4,
                             vertical: 4,
                           ),
-                          onTap: () => _selectDestination(item.title),
+                          onTap: () {
+                            _searchController.text = item.title;
+                            _searchDestinations(item.title);
+                          },
                           leading: Container(
                             width: 40,
                             height: 40,
@@ -252,7 +479,10 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                             child: QuickActionCard(
                               icon: Icons.flight_takeoff_rounded,
                               label: 'Airport',
-                              onTap: () => _selectDestination('Airport'),
+                              onTap: () {
+                                _searchController.text = 'Airport';
+                                _searchDestinations('Airport');
+                              },
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -261,7 +491,10 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                             child: QuickActionCard(
                               icon: Icons.train_rounded,
                               label: 'Train\nStation',
-                              onTap: () => _selectDestination('Train Station'),
+                              onTap: () {
+                                _searchController.text = 'Train Station';
+                                _searchDestinations('Train Station');
+                              },
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -270,7 +503,10 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                             child: QuickActionCard(
                               icon: Icons.directions_bus_rounded,
                               label: 'Bus\nTerminal',
-                              onTap: () => _selectDestination('Bus Terminal'),
+                              onTap: () {
+                                _searchController.text = 'Bus Terminal';
+                                _searchDestinations('Bus Terminal');
+                              },
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -279,7 +515,10 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                             child: QuickActionCard(
                               icon: Icons.school_rounded,
                               label: 'University',
-                              onTap: () => _selectDestination('University'),
+                              onTap: () {
+                                _searchController.text = 'University';
+                                _searchDestinations('University');
+                              },
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -288,7 +527,10 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                             child: QuickActionCard(
                               icon: Icons.shopping_bag_outlined,
                               label: 'Shopping\nMall',
-                              onTap: () => _selectDestination('Shopping Mall'),
+                              onTap: () {
+                                _searchController.text = 'Shopping Mall';
+                                _searchDestinations('Shopping Mall');
+                              },
                             ),
                           ),
                         ],

@@ -1,17 +1,23 @@
-/// Alarm Setup Screen matching the Figma design reference closely.
-library;
-
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
+import '../../core/models/destination_place.dart';
 import '../../core/router/app_router.dart';
+import '../../core/services/destination_search_service.dart';
+import '../../core/services/location_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../shared/widgets/primary_button.dart';
 
 class AlarmSetupScreen extends StatefulWidget {
-  const AlarmSetupScreen({super.key, this.destinationName});
+  const AlarmSetupScreen({
+    super.key,
+    this.destinationName,
+    this.destinationPlace,
+  });
 
   final String? destinationName;
+  final DestinationPlace? destinationPlace;
 
   @override
   State<AlarmSetupScreen> createState() => _AlarmSetupScreenState();
@@ -23,6 +29,7 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
   bool _isVibrationOn = true;
   bool _isVoiceOn = true;
   bool _isRepeatOn = true;
+  Position? _currentPosition;
 
   final List<String> _distances = const [
     '250 m',
@@ -32,12 +39,70 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
     '5 km',
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadLocation();
+  }
+
+  Future<void> _loadLocation() async {
+    try {
+      final pos = await LocationService.getCurrentPosition();
+      if (!mounted) return;
+      setState(() {
+        _currentPosition = pos;
+      });
+    } catch (e) {
+      debugPrint('Location load error in AlarmSetupScreen: $e');
+    }
+  }
+
   String get _effectiveDestination =>
-      widget.destinationName ?? 'Butterworth Railway Station';
+      widget.destinationPlace?.name ?? widget.destinationName ?? '';
+
+  String get _effectiveAddress => widget.destinationPlace?.address ?? '';
+
+  String get _distanceText {
+    if (_currentPosition == null || widget.destinationPlace == null) {
+      return '--';
+    }
+    final meters = Geolocator.distanceBetween(
+      _currentPosition!.latitude,
+      _currentPosition!.longitude,
+      widget.destinationPlace!.latitude,
+      widget.destinationPlace!.longitude,
+    );
+    return DestinationSearchService.formatDistance(meters);
+  }
+
+  String get _estimatedDurationText {
+    if (_currentPosition == null || widget.destinationPlace == null) {
+      return '--';
+    }
+    final meters = Geolocator.distanceBetween(
+      _currentPosition!.latitude,
+      _currentPosition!.longitude,
+      widget.destinationPlace!.latitude,
+      widget.destinationPlace!.longitude,
+    );
+    final totalMins = (meters / 833).round();
+    if (totalMins < 1) {
+      return '< 1 min';
+    }
+    if (totalMins < 60) {
+      return '$totalMins min';
+    }
+    final hrs = totalMins ~/ 60;
+    final mins = totalMins % 60;
+    return '$hrs hr $mins min';
+  }
 
   void _onStartJourney() {
     FocusScope.of(context).unfocus();
-    Navigator.of(context).pushNamed(AppRouter.activeJourney);
+    Navigator.of(context).pushNamed(
+      AppRouter.activeJourney,
+      arguments: widget.destinationPlace,
+    );
   }
 
   void _onPreviewAlarm() {
@@ -97,6 +162,49 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.destinationPlace == null && widget.destinationName == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    size: 48,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No destination selected',
+                    style: AppTextStyles.sectionHeader,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Please choose a destination first before setting up an alarm.',
+                    style: AppTextStyles.subtitle,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  PrimaryButton(
+                    label: 'Choose Destination',
+                    onPressed: () {
+                      Navigator.of(context).pushReplacementNamed(
+                        AppRouter.destinationSearch,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -206,8 +314,8 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                    const Text(
-                                      'Penang',
+                                    Text(
+                                      _effectiveAddress,
                                       style: AppTextStyles.subtitle,
                                     ),
                                   ],
@@ -223,14 +331,14 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: const [
-                                    Text(
+                                  children: [
+                                    const Text(
                                       'Estimated Arrival',
                                       style: AppTextStyles.bodyMuted,
                                     ),
-                                    SizedBox(height: 4),
+                                    const SizedBox(height: 4),
                                     Text(
-                                      '1 hr 45 min',
+                                      _estimatedDurationText,
                                       style: AppTextStyles.statValue,
                                     ),
                                   ],
@@ -239,14 +347,14 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: const [
-                                    Text(
+                                  children: [
+                                    const Text(
                                       'Distance Remaining',
                                       style: AppTextStyles.bodyMuted,
                                     ),
-                                    SizedBox(height: 4),
+                                    const SizedBox(height: 4),
                                     Text(
-                                      '92 km',
+                                      _distanceText,
                                       style: AppTextStyles.statValue,
                                     ),
                                   ],

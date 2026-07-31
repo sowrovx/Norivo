@@ -91,16 +91,6 @@ class SearchField extends StatelessWidget {
                           ),
                         ),
                 ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.mic_none_rounded,
-                    color: AppColors.primary,
-                    size: 22,
-                  ),
-                  onPressed: onMicPressed ?? onTap,
-                  splashRadius: 20,
-                  tooltip: 'Voice Search',
-                ),
               ],
             ),
           ),

@@ -2,8 +2,12 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
+import '../../core/models/destination_place.dart';
 import '../../core/router/app_router.dart';
+import '../../core/services/destination_search_service.dart';
+import '../../core/services/location_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../shared/widgets/alarm_status_card.dart';
@@ -13,11 +17,123 @@ import '../../shared/widgets/journey_status_card.dart';
 import '../../shared/widgets/primary_button.dart';
 import '../../shared/widgets/progress_section.dart';
 
-class ActiveJourneyScreen extends StatelessWidget {
-  const ActiveJourneyScreen({super.key});
+class ActiveJourneyScreen extends StatefulWidget {
+  const ActiveJourneyScreen({
+    super.key,
+    this.destinationPlace,
+  });
+
+  final DestinationPlace? destinationPlace;
+
+  @override
+  State<ActiveJourneyScreen> createState() => _ActiveJourneyScreenState();
+}
+
+class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
+  Position? _currentPosition;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocation();
+  }
+
+  Future<void> _loadLocation() async {
+    try {
+      final pos = await LocationService.getCurrentPosition();
+      if (!mounted) return;
+      setState(() {
+        _currentPosition = pos;
+      });
+    } catch (e) {
+      debugPrint('Location load error in ActiveJourneyScreen: $e');
+    }
+  }
+
+  double? get _distanceMeters {
+    if (_currentPosition == null || widget.destinationPlace == null) {
+      return null;
+    }
+    return Geolocator.distanceBetween(
+      _currentPosition!.latitude,
+      _currentPosition!.longitude,
+      widget.destinationPlace!.latitude,
+      widget.destinationPlace!.longitude,
+    );
+  }
+
+  String get _remainingDistanceText {
+    if (_distanceMeters == null) return '--';
+    return DestinationSearchService.formatDistance(_distanceMeters!);
+  }
+
+  String get _remainingTimeText {
+    if (_distanceMeters == null) return '--';
+    final totalMins = (_distanceMeters! / 833).round();
+    if (totalMins < 1) return '< 1 min';
+    if (totalMins < 60) return '$totalMins mins';
+    final hrs = totalMins ~/ 60;
+    final mins = totalMins % 60;
+    return '${hrs}h ${mins}m';
+  }
+
+  String get _etaText {
+    if (_distanceMeters == null) return '--';
+    final totalMins = (_distanceMeters! / 833).round();
+    final arrivalTime = DateTime.now().add(Duration(minutes: totalMins));
+    final hour = arrivalTime.hour % 12 == 0 ? 12 : arrivalTime.hour % 12;
+    final minute = arrivalTime.minute.toString().padLeft(2, '0');
+    final period = arrivalTime.hour >= 12 ? 'PM' : 'AM';
+    return '${hour.toString().padLeft(2, '0')}:$minute $period';
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.destinationPlace == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    size: 48,
+                    color: AppColors.textMuted,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No destination selected',
+                    style: AppTextStyles.sectionHeader,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Please choose a destination first to start a journey.',
+                    style: AppTextStyles.subtitle,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  PrimaryButton(
+                    label: 'Choose Destination',
+                    onPressed: () {
+                      Navigator.of(context).pushReplacementNamed(
+                        AppRouter.destinationSearch,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final destinationName = widget.destinationPlace!.name;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -30,7 +146,10 @@ class ActiveJourneyScreen extends StatelessWidget {
                   IconButton(
                     onPressed: () {
                       FocusScope.of(context).unfocus();
-                      Navigator.of(context).pushNamed(AppRouter.alarmSetup);
+                      Navigator.of(context).pushNamed(
+                        AppRouter.alarmSetup,
+                        arguments: widget.destinationPlace,
+                      );
                     },
                     icon: const Icon(Icons.arrow_back_ios_new_rounded),
                     tooltip: 'Back',
@@ -45,7 +164,7 @@ class ActiveJourneyScreen extends StatelessWidget {
                           style: AppTextStyles.heading1,
                         ),
                         Text(
-                          'Butterworth Railway Station',
+                          destinationName,
                           style: AppTextStyles.subtitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -107,7 +226,7 @@ class ActiveJourneyScreen extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Butterworth Railway Station',
+                                      destinationName,
                                       style: AppTextStyles.cardTitle,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -125,12 +244,12 @@ class ActiveJourneyScreen extends StatelessWidget {
                             color: AppColors.primary,
                           ),
                           const SizedBox(height: 12),
-                          const ProgressSection(
+                          ProgressSection(
                             progressValue: 0.72,
-                            progressLabel: '72% of the trip is complete',
-                            eta: '08:12 AM',
-                            remainingDistance: '1.4 km',
-                            remainingTime: '12 mins',
+                            progressLabel: 'Journey in progress',
+                            eta: _etaText,
+                            remainingDistance: _remainingDistanceText,
+                            remainingTime: _remainingTimeText,
                           ),
                         ],
                       ),
@@ -164,26 +283,26 @@ class ActiveJourneyScreen extends StatelessWidget {
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                       childAspectRatio: 1.15,
-                      children: const [
+                      children: [
                         JourneyInfoCard(
                           label: 'Estimated arrival',
-                          value: '08:12 AM',
+                          value: _etaText,
                           caption: 'Traffic normal',
                           icon: Icons.access_time_rounded,
                         ),
                         JourneyInfoCard(
                           label: 'Remaining distance',
-                          value: '1.4 km',
-                          caption: '3 mins away',
+                          value: _remainingDistanceText,
+                          caption: 'On route',
                           icon: Icons.straighten_rounded,
                         ),
                         JourneyInfoCard(
                           label: 'Travel time',
-                          value: '12 mins',
+                          value: _remainingTimeText,
                           caption: 'Door-to-door',
                           icon: Icons.timer_rounded,
                         ),
-                        JourneyInfoCard(
+                        const JourneyInfoCard(
                           label: 'Service status',
                           value: 'On track',
                           caption: 'No issues',

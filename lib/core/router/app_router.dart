@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import '../../core/models/destination_place.dart';
 import '../../features/active_journey/active_journey_screen.dart';
 import '../../features/alarm_ringing/alarm_ringing_screen.dart';
 import '../../features/alarm_setup/alarm_setup_screen.dart';
@@ -31,13 +32,16 @@ class AppRouter {
           builder: (_) => const DestinationSearchScreen(),
         );
       case alarmSetup:
-        final destinationName = settings.arguments as String?;
+        final destination = settings.arguments;
+        final place = destination is DestinationPlace ? destination : null;
         return MaterialPageRoute<void>(
-          builder: (_) => AlarmSetupScreen(destinationName: destinationName),
+          builder: (_) => AlarmSetupScreen(destinationPlace: place),
         );
       case activeJourney:
+        final destination = settings.arguments;
+        final place = destination is DestinationPlace ? destination : null;
         return MaterialPageRoute<void>(
-          builder: (_) => const ActiveJourneyScreen(),
+          builder: (_) => ActiveJourneyScreen(destinationPlace: place),
         );
       case alarmRinging:
         return MaterialPageRoute<void>(

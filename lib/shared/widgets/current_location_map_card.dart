@@ -4,13 +4,21 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../core/models/destination_place.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/map_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 
 class CurrentLocationMapCard extends StatefulWidget {
-  const CurrentLocationMapCard({super.key});
+  const CurrentLocationMapCard({
+    super.key,
+    this.destinationPlace,
+    this.routePolyline,
+  });
+
+  final DestinationPlace? destinationPlace;
+  final List<LatLng>? routePolyline;
 
   @override
   State<CurrentLocationMapCard> createState() => _CurrentLocationMapCardState();
@@ -307,6 +315,17 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.norivo.norivo',
             ),
+            if (widget.routePolyline != null &&
+                widget.routePolyline!.isNotEmpty)
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: widget.routePolyline!,
+                    strokeWidth: 4.0,
+                    color: AppColors.primary,
+                  ),
+                ],
+              ),
             MarkerLayer(
               markers: [
                 Marker(
@@ -315,6 +334,20 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
                   height: 40,
                   child: MapService.buildUserMarkerAvatar(),
                 ),
+                if (widget.destinationPlace != null)
+                  Marker(
+                    point: LatLng(
+                      widget.destinationPlace!.latitude,
+                      widget.destinationPlace!.longitude,
+                    ),
+                    width: 32,
+                    height: 32,
+                    child: const Icon(
+                      Icons.location_on_rounded,
+                      color: AppColors.primary,
+                      size: 32,
+                    ),
+                  ),
               ],
             ),
           ],

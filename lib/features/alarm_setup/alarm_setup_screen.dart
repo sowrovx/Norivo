@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../core/models/destination_place.dart';
+import '../../core/models/route_result.dart';
 import '../../core/router/app_router.dart';
 import '../../core/services/destination_search_service.dart';
 import '../../core/services/location_service.dart';
+import '../../core/services/route_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../shared/widgets/primary_button.dart';
@@ -14,10 +16,12 @@ class AlarmSetupScreen extends StatefulWidget {
     super.key,
     this.destinationName,
     this.destinationPlace,
+    this.routeService,
   });
 
   final String? destinationName;
   final DestinationPlace? destinationPlace;
+  final RouteService? routeService;
 
   @override
   State<AlarmSetupScreen> createState() => _AlarmSetupScreenState();
@@ -30,6 +34,8 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
   bool _isVoiceOn = true;
   bool _isRepeatOn = true;
   Position? _currentPosition;
+  RouteResult? _routeResult;
+  late final RouteService _routeService;
 
   final List<String> _distances = const [
     '250 m',
@@ -42,16 +48,30 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
   @override
   void initState() {
     super.initState();
-    _loadLocation();
+    _routeService = widget.routeService ?? RouteService();
+    _loadLocationAndRoute();
   }
 
-  Future<void> _loadLocation() async {
+  Future<void> _loadLocationAndRoute() async {
     try {
       final pos = await LocationService.getCurrentPosition();
       if (!mounted) return;
       setState(() {
         _currentPosition = pos;
       });
+
+      if (pos != null && widget.destinationPlace != null) {
+        final route = await _routeService.calculateRoute(
+          startLatitude: pos.latitude,
+          startLongitude: pos.longitude,
+          destinationLatitude: widget.destinationPlace!.latitude,
+          destinationLongitude: widget.destinationPlace!.longitude,
+        );
+        if (!mounted) return;
+        setState(() {
+          _routeResult = route;
+        });
+      }
     } catch (e) {
       debugPrint('Location load error in AlarmSetupScreen: $e');
     }
@@ -63,6 +83,9 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
   String get _effectiveAddress => widget.destinationPlace?.address ?? '';
 
   String get _distanceText {
+    if (_routeResult != null) {
+      return _routeResult!.formattedDistance;
+    }
     if (_currentPosition == null || widget.destinationPlace == null) {
       return '--';
     }
@@ -76,6 +99,9 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
   }
 
   String get _estimatedDurationText {
+    if (_routeResult != null) {
+      return _routeResult!.formattedDuration;
+    }
     if (_currentPosition == null || widget.destinationPlace == null) {
       return '--';
     }

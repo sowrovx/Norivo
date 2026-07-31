@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../core/models/destination_place.dart';
+import '../../core/models/route_result.dart';
 import '../../core/router/app_router.dart';
 import '../../core/services/destination_search_service.dart';
 import '../../core/services/location_service.dart';
+import '../../core/services/route_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../shared/widgets/alarm_status_card.dart';
@@ -21,9 +23,11 @@ class ActiveJourneyScreen extends StatefulWidget {
   const ActiveJourneyScreen({
     super.key,
     this.destinationPlace,
+    this.routeService,
   });
 
   final DestinationPlace? destinationPlace;
+  final RouteService? routeService;
 
   @override
   State<ActiveJourneyScreen> createState() => _ActiveJourneyScreenState();
@@ -31,26 +35,45 @@ class ActiveJourneyScreen extends StatefulWidget {
 
 class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   Position? _currentPosition;
+  RouteResult? _routeResult;
+  late final RouteService _routeService;
 
   @override
   void initState() {
     super.initState();
-    _loadLocation();
+    _routeService = widget.routeService ?? RouteService();
+    _loadLocationAndRoute();
   }
 
-  Future<void> _loadLocation() async {
+  Future<void> _loadLocationAndRoute() async {
     try {
       final pos = await LocationService.getCurrentPosition();
       if (!mounted) return;
       setState(() {
         _currentPosition = pos;
       });
+
+      if (pos != null && widget.destinationPlace != null) {
+        final route = await _routeService.calculateRoute(
+          startLatitude: pos.latitude,
+          startLongitude: pos.longitude,
+          destinationLatitude: widget.destinationPlace!.latitude,
+          destinationLongitude: widget.destinationPlace!.longitude,
+        );
+        if (!mounted) return;
+        setState(() {
+          _routeResult = route;
+        });
+      }
     } catch (e) {
       debugPrint('Location load error in ActiveJourneyScreen: $e');
     }
   }
 
   double? get _distanceMeters {
+    if (_routeResult != null) {
+      return _routeResult!.distanceMeters;
+    }
     if (_currentPosition == null || widget.destinationPlace == null) {
       return null;
     }
@@ -63,11 +86,17 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   }
 
   String get _remainingDistanceText {
+    if (_routeResult != null) {
+      return _routeResult!.formattedDistance;
+    }
     if (_distanceMeters == null) return '--';
     return DestinationSearchService.formatDistance(_distanceMeters!);
   }
 
   String get _remainingTimeText {
+    if (_routeResult != null) {
+      return _routeResult!.formattedDuration;
+    }
     if (_distanceMeters == null) return '--';
     final totalMins = (_distanceMeters! / 833).round();
     if (totalMins < 1) return '< 1 min';
@@ -78,6 +107,9 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   }
 
   String get _etaText {
+    if (_routeResult != null) {
+      return _routeResult!.formattedEtaTime;
+    }
     if (_distanceMeters == null) return '--';
     final totalMins = (_distanceMeters! / 833).round();
     final arrivalTime = DateTime.now().add(Duration(minutes: totalMins));

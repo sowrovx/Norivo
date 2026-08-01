@@ -215,7 +215,7 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   Widget build(BuildContext context) {
     if (widget.destinationPlace == null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: SafeArea(
           child: Center(
             child: Padding(
@@ -223,10 +223,10 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.error_outline_rounded,
                     size: 48,
-                    color: AppColors.textMuted,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(height: 16),
                   const Text(
@@ -259,7 +259,7 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
     final destinationName = widget.destinationPlace!.name;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -310,9 +310,9 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: AppColors.border, width: 1),
+                        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
                         boxShadow: const [
                           BoxShadow(
                             color: AppColors.cardShadow,
@@ -329,8 +329,8 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
                               Container(
                                 width: 48,
                                 height: 48,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primaryLight,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(

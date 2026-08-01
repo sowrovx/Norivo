@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 
+import 'settings_service.dart';
+
 class AlarmService {
   AlarmService({AudioPlayer? player}) : _player = player ?? AudioPlayer();
 
@@ -44,7 +46,9 @@ class AlarmService {
       );
 
       await _player.setReleaseMode(ReleaseMode.loop);
-      debugPrint('[AlarmService] Attempting to play AssetSource("sounds/alarm.wav")...');
+      final volume = await SettingsService.instance.getAlarmVolume();
+      await _player.setVolume(volume);
+      debugPrint('[AlarmService] Attempting to play AssetSource("sounds/alarm.wav") at volume=$volume...');
       await _player.play(AssetSource('sounds/alarm.wav'));
       debugPrint('[AlarmService] AudioPlayer.play successfully initiated.');
     } catch (e, stackTrace) {

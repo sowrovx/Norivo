@@ -38,9 +38,9 @@ class AppBottomNavigation extends StatelessWidget {
     ];
 
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor, width: 1)),
       ),
       child: SafeArea(
         top: false,
@@ -62,7 +62,7 @@ class AppBottomNavigation extends StatelessWidget {
                           isSelected ? item.activeIcon : item.icon,
                           color: isSelected
                               ? AppColors.primary
-                              : AppColors.textSecondary,
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
                           size: 24,
                         ),
                         const SizedBox(height: 4),
@@ -70,7 +70,9 @@ class AppBottomNavigation extends StatelessWidget {
                           item.label,
                           style: isSelected
                               ? AppTextStyles.bottomNavActive
-                              : AppTextStyles.bottomNavInactive,
+                              : AppTextStyles.bottomNavInactive.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
                         ),
                       ],
                     ),

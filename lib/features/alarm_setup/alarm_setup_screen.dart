@@ -7,6 +7,7 @@ import '../../core/router/app_router.dart';
 import '../../core/services/destination_search_service.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/route_service.dart';
+import '../../core/services/settings_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../shared/widgets/primary_button.dart';
@@ -49,7 +50,21 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
   void initState() {
     super.initState();
     _routeService = widget.routeService ?? RouteService();
+    _loadSavedSettings();
     _loadLocationAndRoute();
+  }
+
+  Future<void> _loadSavedSettings() async {
+    try {
+      final savedRadius = await SettingsService.instance.getDefaultRadius();
+      final index = SettingsService.radiusToIndex(savedRadius);
+      if (!mounted) return;
+      setState(() {
+        _selectedDistanceIndex = index;
+      });
+    } catch (e) {
+      debugPrint('Error loading saved settings in AlarmSetupScreen: $e');
+    }
   }
 
   Future<void> _loadLocationAndRoute() async {
@@ -213,7 +228,7 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
   Widget build(BuildContext context) {
     if (widget.destinationPlace == null && widget.destinationName == null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: SafeArea(
           child: Center(
             child: Padding(
@@ -255,7 +270,7 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -265,9 +280,9 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.arrow_back_ios_new_rounded,
-                      color: AppColors.onBackground,
+                      color: Theme.of(context).colorScheme.onSurface,
                       size: 20,
                     ),
                     onPressed: () {
@@ -281,12 +296,12 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Set Alarm',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.onBackground,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                         Text(
@@ -317,9 +332,9 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: AppColors.border, width: 1),
+                        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
                         boxShadow: const [
                           BoxShadow(
                             color: AppColors.cardShadow,
@@ -336,8 +351,8 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                               Container(
                                 width: 44,
                                 height: 44,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primaryLight,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -373,7 +388,7 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          const Divider(color: AppColors.border, height: 1),
+                          Divider(color: Theme.of(context).dividerColor, height: 1),
                           const SizedBox(height: 16),
                           Row(
                             children: [
@@ -427,7 +442,7 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                     Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
@@ -460,7 +475,7 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                                           : FontWeight.w600,
                                       color: isSelected
                                           ? Colors.white
-                                          : AppTextStyles.subtitle.color,
+                                          : Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ),
@@ -482,9 +497,9 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
 
                     Container(
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: AppColors.border, width: 1),
+                        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
                         boxShadow: const [
                           BoxShadow(
                             color: AppColors.cardShadow,
@@ -516,15 +531,15 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                                     style: AppTextStyles.subtitle,
                                   ),
                                   const SizedBox(width: 4),
-                                  const Icon(
+                                  Icon(
                                     Icons.chevron_right_rounded,
-                                    color: AppColors.textMuted,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     size: 20,
                                   ),
                                 ],
                               ),
                             ),
-                            const Divider(color: AppColors.border, height: 1),
+                            Divider(color: Theme.of(context).dividerColor, height: 1),
                             SwitchListTile.adaptive(
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -542,7 +557,7 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                                 style: AppTextStyles.body,
                               ),
                             ),
-                            const Divider(color: AppColors.border, height: 1),
+                            Divider(color: Theme.of(context).dividerColor, height: 1),
                             SwitchListTile.adaptive(
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -560,7 +575,7 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                                 style: AppTextStyles.body,
                               ),
                             ),
-                            const Divider(color: AppColors.border, height: 1),
+                            Divider(color: Theme.of(context).dividerColor, height: 1),
                             SwitchListTile.adaptive(
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -589,7 +604,7 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Row(
@@ -597,8 +612,8 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                           Container(
                             width: 40,
                             height: 40,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -608,13 +623,13 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Text(
                               'Norivo will continue monitoring your journey even while your phone is locked. Battery optimized. Safe. Reliable.',
                               style: TextStyle(
                                 fontSize: 13,
                                 height: 1.35,
-                                color: Color(0xFF1E293B),
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
@@ -632,10 +647,10 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
             // Bottom Sticky Actions
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
                 border: Border(
-                  top: BorderSide(color: AppColors.border, width: 1),
+                  top: BorderSide(color: Theme.of(context).dividerColor, width: 1),
                 ),
               ),
               child: Column(

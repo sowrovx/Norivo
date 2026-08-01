@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:norivo/core/models/destination_place.dart';
 import 'package:norivo/features/active_journey/active_journey_screen.dart';
 import 'package:norivo/features/alarm_setup/alarm_setup_screen.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
   testWidgets('renders error view when no destination is provided to AlarmSetupScreen', (
     WidgetTester tester,
   ) async {

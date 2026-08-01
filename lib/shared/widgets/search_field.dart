@@ -31,16 +31,16 @@ class SearchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectiveBorderColor =
-        borderColor ?? (isFocused ? AppColors.primary : AppColors.border);
+        borderColor ?? (isFocused ? AppColors.primary : Theme.of(context).dividerColor);
     final borderWidth = isFocused || borderColor != null ? 1.5 : 1.0;
 
     return Container(
       height: 56,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: effectiveBorderColor, width: borderWidth),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
             color: AppColors.cardShadow,
             blurRadius: 12,
@@ -69,7 +69,7 @@ class SearchField extends StatelessWidget {
                       ? Text(
                           hintText,
                           style: AppTextStyles.subtitle.copyWith(
-                            color: AppColors.textSecondary,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 15,
                           ),
                           maxLines: 1,
@@ -82,7 +82,7 @@ class SearchField extends StatelessWidget {
                           decoration: InputDecoration(
                             hintText: hintText,
                             hintStyle: AppTextStyles.subtitle.copyWith(
-                              color: AppColors.textMuted,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                               fontSize: 15,
                             ),
                             border: InputBorder.none,

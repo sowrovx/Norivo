@@ -175,7 +175,7 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
     final hasSelection = _selectedPlace != null;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -185,9 +185,9 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.arrow_back_ios_new_rounded,
-                      color: AppColors.onBackground,
+                      color: Theme.of(context).colorScheme.onSurface,
                       size: 20,
                     ),
                     onPressed: () {
@@ -197,13 +197,13 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                     tooltip: 'Back',
                   ),
                   const SizedBox(width: 4),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Choose Destination',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.onBackground,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -317,7 +317,7 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: _searchResults.length,
                           separatorBuilder: (_, _) =>
-                              const Divider(color: AppColors.border, height: 1),
+                              Divider(color: Theme.of(context).dividerColor, height: 1),
                           itemBuilder: (context, index) {
                             final place = _searchResults[index];
                             final isSelected =
@@ -345,8 +345,8 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                               leading: Container(
                                 width: 40,
                                 height: 40,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primaryLight,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -360,7 +360,7 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                                 style: AppTextStyles.cardTitle.copyWith(
                                   color: isSelected
                                       ? AppColors.primary
-                                      : AppColors.onBackground,
+                                      : Theme.of(context).colorScheme.onSurface,
                                   fontSize: 15,
                                 ),
                               ),
@@ -409,7 +409,7 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: _recentSearches.length,
                       separatorBuilder: (_, _) =>
-                          const Divider(color: AppColors.border, height: 1),
+                          Divider(color: Theme.of(context).dividerColor, height: 1),
                       itemBuilder: (context, index) {
                         final item = _recentSearches[index];
                         final isSelected = _selectedPlace?.name == item.title;
@@ -426,8 +426,8 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                           leading: Container(
                             width: 40,
                             height: 40,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primaryLight,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -441,7 +441,7 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                             style: AppTextStyles.cardTitle.copyWith(
                               color: isSelected
                                   ? AppColors.primary
-                                  : AppColors.onBackground,
+                                  : Theme.of(context).colorScheme.onSurface,
                               fontSize: 15,
                             ),
                           ),
@@ -451,9 +451,9 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                               fontSize: 13,
                             ),
                           ),
-                          trailing: const Icon(
+                          trailing: Icon(
                             Icons.chevron_right_rounded,
-                            color: AppColors.textMuted,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                             size: 22,
                           ),
                         );
@@ -546,10 +546,10 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
             // Bottom Sticky Continue Bar
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
                 border: Border(
-                  top: BorderSide(color: AppColors.border, width: 1),
+                  top: BorderSide(color: Theme.of(context).dividerColor, width: 1),
                 ),
               ),
               child: PrimaryButton(
@@ -557,10 +557,10 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
                 onPressed: hasSelection ? _onContinuePressed : null,
                 backgroundColor: hasSelection
                     ? AppColors.primary
-                    : const Color(0xFFE2E8F0),
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
                 textColor: hasSelection
                     ? Colors.white
-                    : const Color(0xFF94A3B8),
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -584,7 +584,7 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.primaryLight,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,

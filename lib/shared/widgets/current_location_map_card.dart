@@ -34,6 +34,7 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
   String? _errorMessage;
   LocationPermissionState _permissionState = LocationPermissionState.unknown;
   bool _hasFittedRoute = false;
+  bool _isMapReady = false;
 
   @override
   void initState() {
@@ -118,7 +119,7 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
       _errorMessage = null;
     });
 
-    if (initialLoad || !_hasFittedRoute) {
+    if (_isMapReady && (initialLoad || !_hasFittedRoute)) {
       if (widget.routePolyline != null && widget.routePolyline!.isNotEmpty) {
         _fitMapToRoute();
       } else {
@@ -128,7 +129,7 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
   }
 
   void _fitMapToRoute() {
-    if (_center == null) return;
+    if (!_isMapReady || _center == null) return;
     final points = <LatLng>[
       _center!,
       if (widget.destinationPlace != null)
@@ -155,10 +156,22 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
     }
   }
 
+  void _onMapReady() {
+    _isMapReady = true;
+    if (!_hasFittedRoute &&
+        widget.routePolyline != null &&
+        widget.routePolyline!.isNotEmpty) {
+      _fitMapToRoute();
+    } else if (_center != null) {
+      _mapController.move(_center!, 15);
+    }
+  }
+
   @override
   void didUpdateWidget(covariant CurrentLocationMapCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_hasFittedRoute &&
+    if (_isMapReady &&
+        !_hasFittedRoute &&
         widget.routePolyline != null &&
         widget.routePolyline!.isNotEmpty &&
         (oldWidget.routePolyline == null || oldWidget.routePolyline!.isEmpty)) {
@@ -169,6 +182,7 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
+    if (!_isMapReady) return;
     try {
       final camera = _mapController.camera;
       final centerPoint = camera.latLngToScreenPoint(camera.center);
@@ -199,10 +213,10 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border, width: 1),
-        boxShadow: const [
+        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
+        boxShadow: [
           BoxShadow(
             color: AppColors.cardShadow,
             blurRadius: 16,
@@ -234,7 +248,7 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: const Text(
@@ -314,10 +328,10 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.map_outlined,
               size: 40,
-              color: AppColors.textMuted,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 12),
             Text(
@@ -339,6 +353,7 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
             options: MapOptions(
               initialCenter: _center!,
               initialZoom: 15,
+              onMapReady: _onMapReady,
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all,
               ),
@@ -394,7 +409,7 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
               FloatingActionButton.small(
                 heroTag: 'zoom-in',
                 onPressed: _zoomIn,
-                backgroundColor: AppColors.surface,
+                backgroundColor: Theme.of(context).colorScheme.surface,
                 foregroundColor: AppColors.primary,
                 child: const Icon(Icons.add_rounded),
               ),
@@ -402,7 +417,7 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
               FloatingActionButton.small(
                 heroTag: 'zoom-out',
                 onPressed: _zoomOut,
-                backgroundColor: AppColors.surface,
+                backgroundColor: Theme.of(context).colorScheme.surface,
                 foregroundColor: AppColors.primary,
                 child: const Icon(Icons.remove_rounded),
               ),

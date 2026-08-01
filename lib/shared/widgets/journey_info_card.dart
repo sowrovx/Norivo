@@ -25,10 +25,10 @@ class JourneyInfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border, width: 1),
-        boxShadow: const [
+        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
+        boxShadow: [
           BoxShadow(
             color: AppColors.cardShadow,
             blurRadius: 10,

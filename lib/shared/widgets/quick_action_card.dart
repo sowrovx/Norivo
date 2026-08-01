@@ -22,10 +22,10 @@ class QuickActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border, width: 1),
-        boxShadow: const [
+        border: Border.all(color: Theme.of(context).dividerColor, width: 1),
+        boxShadow: [
           BoxShadow(
             color: AppColors.cardShadow,
             blurRadius: 8,
@@ -48,8 +48,8 @@ class QuickActionCard extends StatelessWidget {
                 Container(
                   width: 44,
                   height: 44,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primaryLight,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: AppColors.primary, size: 22),

@@ -9,6 +9,7 @@ import '../../features/alarm_ringing/alarm_ringing_screen.dart';
 import '../../features/alarm_setup/alarm_setup_screen.dart';
 import '../../features/destination_search/destination_search_screen.dart';
 import '../../features/home/home_screen.dart';
+import '../../features/settings/settings_screen.dart';
 import '../../features/splash/splash_screen.dart';
 
 class AppRouter {
@@ -20,25 +21,28 @@ class AppRouter {
   static const String alarmSetup = '/alarm-setup';
   static const String activeJourney = '/active-journey';
   static const String alarmRinging = '/alarm-ringing';
+  static const String settings = '/settings';
 
-  static Route<dynamic> onGenerateRoute(RouteSettings settings) {
-    switch (settings.name) {
+  static Route<dynamic> onGenerateRoute(RouteSettings routeSettings) {
+    switch (routeSettings.name) {
       case splash:
         return MaterialPageRoute<void>(builder: (_) => const SplashScreen());
       case home:
         return MaterialPageRoute<void>(builder: (_) => const HomeScreen());
+      case settings:
+        return MaterialPageRoute<void>(builder: (_) => const SettingsScreen());
       case destinationSearch:
         return MaterialPageRoute<void>(
           builder: (_) => const DestinationSearchScreen(),
         );
       case alarmSetup:
-        final destination = settings.arguments;
+        final destination = routeSettings.arguments;
         final place = destination is DestinationPlace ? destination : null;
         return MaterialPageRoute<void>(
           builder: (_) => AlarmSetupScreen(destinationPlace: place),
         );
       case activeJourney:
-        final destination = settings.arguments;
+        final destination = routeSettings.arguments;
         DestinationPlace? place;
         double alarmThreshold = 1000.0;
         if (destination is DestinationPlace) {
@@ -55,7 +59,7 @@ class AppRouter {
           ),
         );
       case alarmRinging:
-        final destination = settings.arguments;
+        final destination = routeSettings.arguments;
         final place = destination is DestinationPlace ? destination : null;
         return MaterialPageRoute<void>(
           builder: (_) => AlarmRingingScreen(destinationPlace: place),

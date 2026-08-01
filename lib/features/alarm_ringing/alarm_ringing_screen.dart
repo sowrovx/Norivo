@@ -56,7 +56,7 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -120,9 +120,9 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen>
                     horizontal: 18,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border, width: 1),
+                    border: Border.all(color: Theme.of(context).dividerColor, width: 1),
                     boxShadow: const [
                       BoxShadow(
                         color: AppColors.cardShadow,
@@ -164,7 +164,7 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen>
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.border, width: 1),
+                      side: BorderSide(color: Theme.of(context).dividerColor, width: 1),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(999),
                       ),

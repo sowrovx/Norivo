@@ -41,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -141,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: AppColors.border, width: 1),
                   boxShadow: const [
@@ -156,14 +156,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     const RouteIllustration(),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'No active journey',
-                      style: AppTextStyles.cardTitle,
+                      style: AppTextStyles.cardTitle.copyWith(
+                        color: const Color(0xFF0F172A),
+                      ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       'Search a destination to begin',
-                      style: AppTextStyles.subtitle,
+                      style: AppTextStyles.subtitle.copyWith(
+                        color: const Color(0xFF64748B),
+                      ),
                     ),
                     const SizedBox(height: 20),
                     PrimaryButton(
@@ -191,7 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   vertical: 20,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: AppColors.border, width: 1),
                   boxShadow: const [
@@ -209,13 +213,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       flex: 5,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           Text(
                             "You've safely completed",
-                            style: AppTextStyles.bodyMuted,
+                            style: AppTextStyles.bodyMuted.copyWith(
+                              color: const Color(0xFF64748B),
+                            ),
                           ),
-                          SizedBox(height: 4),
-                          Text('14 journeys', style: AppTextStyles.statValue),
+                          const SizedBox(height: 4),
+                          Text(
+                            '14 journeys',
+                            style: AppTextStyles.statValue.copyWith(
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -248,11 +259,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
-                                Text('99%', style: AppTextStyles.statValue),
+                              children: [
+                                Text(
+                                  '99%',
+                                  style: AppTextStyles.statValue.copyWith(
+                                    color: const Color(0xFF0F172A),
+                                  ),
+                                ),
                                 Text(
                                   'Wake-up accuracy',
-                                  style: AppTextStyles.bodyMuted,
+                                  style: AppTextStyles.bodyMuted.copyWith(
+                                    color: const Color(0xFF64748B),
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -274,9 +292,13 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: AppBottomNavigation(
         currentIndex: _currentNavIndex,
         onTap: (index) {
-          setState(() {
-            _currentNavIndex = index;
-          });
+          if (index == 3) {
+            Navigator.of(context).pushNamed(AppRouter.settings);
+          } else {
+            setState(() {
+              _currentNavIndex = index;
+            });
+          }
         },
       ),
     );

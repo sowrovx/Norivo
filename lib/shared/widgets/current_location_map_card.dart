@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -31,6 +33,7 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
   bool _isLoading = true;
   String? _errorMessage;
   LocationPermissionState _permissionState = LocationPermissionState.unknown;
+  bool _hasFittedRoute = false;
 
   @override
   void initState() {
@@ -81,49 +84,11 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
       return;
     }
 
-    await _moveToCurrentLocation();
+    await _moveToCurrentLocation(initialLoad: true);
   }
 
-  Future<void> _moveToCurrentLocation() async {
+  Future<void> _moveToCurrentLocation({bool initialLoad = false}) async {
     if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    debugPrint('Location service enabled: $serviceEnabled');
-
-    final permissionState = await LocationService.checkAndRequestPermission();
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _permissionState = permissionState;
-    });
-    debugPrint('Location permission status: $permissionState');
-
-    if (!serviceEnabled) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage =
-            'Location services are disabled. Please enable GPS to see your current location.';
-      });
-      return;
-    }
-
-    if (permissionState != LocationPermissionState.granted) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage =
-            permissionState == LocationPermissionState.permanentlyDenied
-            ? 'Location access is disabled in settings. Please enable it to see your position on the map.'
-            : 'Location permission is required to show your current location.';
-      });
       return;
     }
 
@@ -133,10 +98,12 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
     }
 
     if (position == null) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Unable to determine your location right now.';
-      });
+      if (_center == null) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Unable to determine your location right now.';
+        });
+      }
       return;
     }
 
@@ -151,7 +118,69 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
       _errorMessage = null;
     });
 
-    _mapController.move(latLng, 15);
+    if (initialLoad || !_hasFittedRoute) {
+      if (widget.routePolyline != null && widget.routePolyline!.isNotEmpty) {
+        _fitMapToRoute();
+      } else {
+        _mapController.move(latLng, 15);
+      }
+    }
+  }
+
+  void _fitMapToRoute() {
+    if (_center == null) return;
+    final points = <LatLng>[
+      _center!,
+      if (widget.destinationPlace != null)
+        LatLng(
+          widget.destinationPlace!.latitude,
+          widget.destinationPlace!.longitude,
+        ),
+      if (widget.routePolyline != null) ...widget.routePolyline!,
+    ];
+
+    if (points.length >= 2) {
+      try {
+        final bounds = LatLngBounds.fromPoints(points);
+        _mapController.fitCamera(
+          CameraFit.bounds(
+            bounds: bounds,
+            padding: const EdgeInsets.all(36),
+          ),
+        );
+        _hasFittedRoute = true;
+      } catch (e) {
+        debugPrint('Error fitting map camera to route bounds: $e');
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant CurrentLocationMapCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_hasFittedRoute &&
+        widget.routePolyline != null &&
+        widget.routePolyline!.isNotEmpty &&
+        (oldWidget.routePolyline == null || oldWidget.routePolyline!.isEmpty)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _fitMapToRoute();
+      });
+    }
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    try {
+      final camera = _mapController.camera;
+      final centerPoint = camera.latLngToScreenPoint(camera.center);
+      final newPoint = Point<double>(
+        centerPoint.x - details.delta.dx,
+        centerPoint.y - details.delta.dy,
+      );
+      final newCenter = camera.pointToLatLng(newPoint);
+      _mapController.move(newCenter, camera.zoom);
+    } catch (e) {
+      debugPrint('Map pan update error: $e');
+    }
   }
 
   void _zoomIn() {
@@ -219,7 +248,9 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
                 ),
               const SizedBox(width: 8),
               IconButton(
-                onPressed: _center != null ? _moveToCurrentLocation : null,
+                onPressed: _center != null
+                    ? () => _moveToCurrentLocation(initialLoad: true)
+                    : null,
                 icon: const Icon(Icons.my_location_rounded),
                 color: AppColors.primary,
                 tooltip: 'Center on current location',
@@ -301,56 +332,59 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
 
     return Stack(
       children: [
-        FlutterMap(
-          mapController: _mapController,
-          options: MapOptions(
-            initialCenter: _center!,
-            initialZoom: 15,
-            interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.all,
+        GestureDetector(
+          onPanUpdate: _onPanUpdate,
+          child: FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _center!,
+              initialZoom: 15,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all,
+              ),
             ),
-          ),
-          children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.norivo.norivo',
-            ),
-            if (widget.routePolyline != null &&
-                widget.routePolyline!.isNotEmpty)
-              PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: widget.routePolyline!,
-                    strokeWidth: 4.0,
-                    color: AppColors.primary,
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.norivo.norivo',
+              ),
+              if (widget.routePolyline != null &&
+                  widget.routePolyline!.isNotEmpty)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: widget.routePolyline!,
+                      strokeWidth: 4.0,
+                      color: AppColors.primary,
+                    ),
+                  ],
+                ),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: _center!,
+                    width: 40,
+                    height: 40,
+                    child: MapService.buildUserMarkerAvatar(),
                   ),
+                  if (widget.destinationPlace != null)
+                    Marker(
+                      point: LatLng(
+                        widget.destinationPlace!.latitude,
+                        widget.destinationPlace!.longitude,
+                      ),
+                      width: 32,
+                      height: 32,
+                      child: const Icon(
+                        Icons.location_on_rounded,
+                        color: AppColors.primary,
+                        size: 32,
+                      ),
+                    ),
                 ],
               ),
-            MarkerLayer(
-              markers: [
-                Marker(
-                  point: _center!,
-                  width: 40,
-                  height: 40,
-                  child: MapService.buildUserMarkerAvatar(),
-                ),
-                if (widget.destinationPlace != null)
-                  Marker(
-                    point: LatLng(
-                      widget.destinationPlace!.latitude,
-                      widget.destinationPlace!.longitude,
-                    ),
-                    width: 32,
-                    height: 32,
-                    child: const Icon(
-                      Icons.location_on_rounded,
-                      color: AppColors.primary,
-                      size: 32,
-                    ),
-                  ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
         Positioned(
           right: 12,
@@ -379,3 +413,4 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
     );
   }
 }
+

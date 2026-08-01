@@ -1,5 +1,4 @@
-/// Active journey screen showing route status, progress, and travel details.
-library;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -14,6 +13,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../shared/widgets/alarm_status_card.dart';
 import '../../shared/widgets/app_bottom_navigation.dart';
+import '../../shared/widgets/current_location_map_card.dart';
 import '../../shared/widgets/journey_info_card.dart';
 import '../../shared/widgets/journey_status_card.dart';
 import '../../shared/widgets/primary_button.dart';
@@ -24,10 +24,12 @@ class ActiveJourneyScreen extends StatefulWidget {
     super.key,
     this.destinationPlace,
     this.routeService,
+    this.alarmThresholdMeters = 1000.0,
   });
 
   final DestinationPlace? destinationPlace;
   final RouteService? routeService;
+  final double alarmThresholdMeters;
 
   @override
   State<ActiveJourneyScreen> createState() => _ActiveJourneyScreenState();
@@ -37,33 +39,92 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   Position? _currentPosition;
   RouteResult? _routeResult;
   late final RouteService _routeService;
+  StreamSubscription<Position>? _positionSubscription;
+  bool _hasTriggeredAlarm = false;
 
   @override
   void initState() {
     super.initState();
     _routeService = widget.routeService ?? RouteService();
     _loadLocationAndRoute();
+    _initPositionSubscription();
+  }
+
+  @override
+  void dispose() {
+    _positionSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _initPositionSubscription() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      final permission = await LocationService.checkAndRequestPermission();
+      if (permission != LocationPermissionState.granted) return;
+
+      _positionSubscription = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 10,
+        ),
+      ).listen(
+        (position) {
+          _onLocationUpdated(position);
+        },
+        onError: (error) {
+          debugPrint('Active Journey position stream error: $error');
+        },
+      );
+    } catch (e) {
+      debugPrint('Error starting active journey position stream: $e');
+    }
+  }
+
+  Future<void> _onLocationUpdated(Position position) async {
+    if (!mounted) return;
+    setState(() {
+      _currentPosition = position;
+    });
+
+    if (widget.destinationPlace == null) return;
+
+    final distance = Geolocator.distanceBetween(
+      position.latitude,
+      position.longitude,
+      widget.destinationPlace!.latitude,
+      widget.destinationPlace!.longitude,
+    );
+
+    if (!_hasTriggeredAlarm && distance <= widget.alarmThresholdMeters) {
+      _hasTriggeredAlarm = true;
+      Navigator.of(context).pushNamed(AppRouter.alarmRinging);
+      return;
+    }
+
+    try {
+      final route = await _routeService.calculateRoute(
+        startLatitude: position.latitude,
+        startLongitude: position.longitude,
+        destinationLatitude: widget.destinationPlace!.latitude,
+        destinationLongitude: widget.destinationPlace!.longitude,
+      );
+      if (!mounted) return;
+      setState(() {
+        _routeResult = route;
+      });
+    } catch (e) {
+      debugPrint('Active Journey live route update error: $e');
+    }
   }
 
   Future<void> _loadLocationAndRoute() async {
     try {
       final pos = await LocationService.getCurrentPosition();
       if (!mounted) return;
-      setState(() {
-        _currentPosition = pos;
-      });
-
-      if (pos != null && widget.destinationPlace != null) {
-        final route = await _routeService.calculateRoute(
-          startLatitude: pos.latitude,
-          startLongitude: pos.longitude,
-          destinationLatitude: widget.destinationPlace!.latitude,
-          destinationLongitude: widget.destinationPlace!.longitude,
-        );
-        if (!mounted) return;
-        setState(() {
-          _routeResult = route;
-        });
+      if (pos != null) {
+        _onLocationUpdated(pos);
       }
     } catch (e) {
       debugPrint('Location load error in ActiveJourneyScreen: $e');
@@ -285,6 +346,11 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
                           ),
                         ],
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    CurrentLocationMapCard(
+                      destinationPlace: widget.destinationPlace,
+                      routePolyline: _routeResult?.polyline,
                     ),
                     const SizedBox(height: 16),
                     const AlarmStatusCard(

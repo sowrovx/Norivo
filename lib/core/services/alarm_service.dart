@@ -1,0 +1,110 @@
+import 'dart:async';
+
+import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:vibration/vibration.dart';
+
+class AlarmService {
+  AlarmService({AudioPlayer? player}) : _player = player ?? AudioPlayer();
+
+  static final AlarmService instance = AlarmService();
+
+  final AudioPlayer _player;
+  Timer? _vibrationTimer;
+  bool _isPlaying = false;
+
+  bool get isPlaying => _isPlaying;
+
+  /// Starts playing looping alarm sound and vibrating the device.
+  Future<void> startAlarm() async {
+    debugPrint('[AlarmService] startAlarm() invoked. isPlaying=$_isPlaying');
+    if (_isPlaying) return;
+    _isPlaying = true;
+
+    try {
+      debugPrint('[AlarmService] Configuring AudioContext for alarm playback...');
+      await AudioPlayer.global.setAudioContext(
+        AudioContext(
+          iOS: AudioContextIOS(
+            category: AVAudioSessionCategory.playback,
+            options: {
+              AVAudioSessionOptions.mixWithOthers,
+              AVAudioSessionOptions.duckOthers,
+            },
+          ),
+          android: const AudioContextAndroid(
+            isSpeakerphoneOn: true,
+            stayAwake: true,
+            contentType: AndroidContentType.sonification,
+            usageType: AndroidUsageType.alarm,
+            audioFocus: AndroidAudioFocus.gainTransient,
+          ),
+        ),
+      );
+
+      await _player.setReleaseMode(ReleaseMode.loop);
+      debugPrint('[AlarmService] Attempting to play AssetSource("sounds/alarm.wav")...');
+      await _player.play(AssetSource('sounds/alarm.wav'));
+      debugPrint('[AlarmService] AudioPlayer.play successfully initiated.');
+    } catch (e, stackTrace) {
+      debugPrint('[AlarmService] AudioPlayer error using AssetSource: $e');
+      debugPrint('[AlarmService] Stack trace: $stackTrace');
+      try {
+        debugPrint('[AlarmService] Fallback: Playing UrlSource...');
+        await _player.play(
+          UrlSource(
+            'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg',
+          ),
+        );
+      } catch (fallbackErr) {
+        debugPrint('[AlarmService] Fallback UrlSource play error: $fallbackErr');
+      }
+    }
+
+    try {
+      debugPrint('[AlarmService] Initiating vibration pattern...');
+      final hasVibrator = await Vibration.hasVibrator();
+      if (hasVibrator == true) {
+        Vibration.vibrate(pattern: [500, 500, 500, 500], repeat: 0);
+        debugPrint('[AlarmService] Vibration pattern started.');
+      } else {
+        _vibrationTimer?.cancel();
+        _vibrationTimer = Timer.periodic(
+          const Duration(milliseconds: 1000),
+          (_) => HapticFeedback.vibrate(),
+        );
+        debugPrint('[AlarmService] HapticFeedback vibration timer started.');
+      }
+    } catch (e) {
+      debugPrint('[AlarmService] Error starting vibration: $e');
+      _vibrationTimer?.cancel();
+      _vibrationTimer = Timer.periodic(
+        const Duration(milliseconds: 1000),
+        (_) => HapticFeedback.vibrate(),
+      );
+    }
+  }
+
+  /// Stops the alarm sound and vibration.
+  Future<void> stopAlarm() async {
+    debugPrint('[AlarmService] stopAlarm() invoked. Stopping playback and vibration...');
+    _isPlaying = false;
+    _vibrationTimer?.cancel();
+    _vibrationTimer = null;
+
+    try {
+      await Vibration.cancel();
+      debugPrint('[AlarmService] Vibration cancelled.');
+    } catch (e) {
+      debugPrint('[AlarmService] Error cancelling vibration: $e');
+    }
+
+    try {
+      await _player.stop();
+      debugPrint('[AlarmService] AudioPlayer stopped.');
+    } catch (e) {
+      debugPrint('[AlarmService] Error stopping audio player: $e');
+    }
+  }
+}

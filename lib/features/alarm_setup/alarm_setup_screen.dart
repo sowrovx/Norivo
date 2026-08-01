@@ -123,17 +123,40 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
     return '$hrs hr $mins min';
   }
 
+  double get _selectedRadiusMeters {
+    switch (_selectedDistanceIndex) {
+      case 0:
+        return 250.0;
+      case 1:
+        return 500.0;
+      case 2:
+        return 1000.0;
+      case 3:
+        return 2000.0;
+      case 4:
+        return 5000.0;
+      default:
+        return 1000.0;
+    }
+  }
+
   void _onStartJourney() {
     FocusScope.of(context).unfocus();
     Navigator.of(context).pushNamed(
       AppRouter.activeJourney,
-      arguments: widget.destinationPlace,
+      arguments: {
+        'destinationPlace': widget.destinationPlace,
+        'alarmThresholdMeters': _selectedRadiusMeters,
+      },
     );
   }
 
   void _onPreviewAlarm() {
     FocusScope.of(context).unfocus();
-    Navigator.of(context).pushNamed(AppRouter.alarmRinging);
+    Navigator.of(context).pushNamed(
+      AppRouter.alarmRinging,
+      arguments: widget.destinationPlace,
+    );
   }
 
   void _showSoundPicker() {

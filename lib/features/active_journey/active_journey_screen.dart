@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../core/models/destination_place.dart';
 import '../../core/models/route_result.dart';
 import '../../core/router/app_router.dart';
+import '../../core/services/alarm_service.dart';
 import '../../core/services/destination_search_service.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/route_service.dart';
@@ -99,7 +100,11 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
 
     if (!_hasTriggeredAlarm && distance <= widget.alarmThresholdMeters) {
       _hasTriggeredAlarm = true;
-      Navigator.of(context).pushNamed(AppRouter.alarmRinging);
+      AlarmService.instance.startAlarm();
+      Navigator.of(context).pushNamed(
+        AppRouter.alarmRinging,
+        arguments: widget.destinationPlace,
+      );
       return;
     }
 
@@ -129,6 +134,23 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
     } catch (e) {
       debugPrint('Location load error in ActiveJourneyScreen: $e');
     }
+  }
+
+  Future<void> _endJourney() async {
+    FocusScope.of(context).unfocus();
+
+    await _positionSubscription?.cancel();
+    _positionSubscription = null;
+
+    _hasTriggeredAlarm = true;
+
+    await AlarmService.instance.stopAlarm();
+
+    if (!mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      AppRouter.home,
+      (route) => false,
+    );
   }
 
   double? get _distanceMeters {
@@ -178,6 +200,15 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
     final minute = arrivalTime.minute.toString().padLeft(2, '0');
     final period = arrivalTime.hour >= 12 ? 'PM' : 'AM';
     return '${hour.toString().padLeft(2, '0')}:$minute $period';
+  }
+
+  String get _formattedThresholdText {
+    final meters = widget.alarmThresholdMeters;
+    if (meters >= 1000) {
+      final km = (meters / 1000).toStringAsFixed(meters % 1000 == 0 ? 0 : 1);
+      return '$km km';
+    }
+    return '${meters.toInt()} m';
   }
 
   @override
@@ -353,9 +384,9 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
                       routePolyline: _routeResult?.polyline,
                     ),
                     const SizedBox(height: 16),
-                    const AlarmStatusCard(
+                    AlarmStatusCard(
                       status: 'Alarm status',
-                      detail: 'Enabled • 1 km before arrival',
+                      detail: 'Enabled • $_formattedThresholdText before arrival',
                       icon: Icons.alarm_on_rounded,
                       color: AppColors.primary,
                     ),
@@ -411,10 +442,7 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
                     const SizedBox(height: 20),
                     PrimaryButton(
                       label: 'End Journey',
-                      onPressed: () {
-                        FocusScope.of(context).unfocus();
-                        Navigator.of(context).pushNamed(AppRouter.alarmRinging);
-                      },
+                      onPressed: _endJourney,
                       icon: Icons.stop_circle_rounded,
                     ),
                   ],

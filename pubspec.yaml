@@ -39,6 +39,8 @@ dependencies:
   latlong2: ^0.9.1
   permission_handler: ^11.2.0
   http: ^1.6.0
+  audioplayers: ^6.8.1
+  vibration: ^3.2.0
 
 dev_dependencies:
   flutter_test:
@@ -64,6 +66,7 @@ flutter:
 
   assets:
     - Splash Screen v2 — Norivo Brand (Pixel 9 Pro)-2.png
+    - assets/sounds/alarm.wav
 
   # To add assets to your application, add an assets section, like this:
   # assets:

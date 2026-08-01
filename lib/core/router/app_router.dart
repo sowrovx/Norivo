@@ -39,13 +39,26 @@ class AppRouter {
         );
       case activeJourney:
         final destination = settings.arguments;
-        final place = destination is DestinationPlace ? destination : null;
+        DestinationPlace? place;
+        double alarmThreshold = 1000.0;
+        if (destination is DestinationPlace) {
+          place = destination;
+        } else if (destination is Map<String, dynamic>) {
+          place = destination['destinationPlace'] as DestinationPlace?;
+          alarmThreshold =
+              (destination['alarmThresholdMeters'] as num?)?.toDouble() ?? 1000.0;
+        }
         return MaterialPageRoute<void>(
-          builder: (_) => ActiveJourneyScreen(destinationPlace: place),
+          builder: (_) => ActiveJourneyScreen(
+            destinationPlace: place,
+            alarmThresholdMeters: alarmThreshold,
+          ),
         );
       case alarmRinging:
+        final destination = settings.arguments;
+        final place = destination is DestinationPlace ? destination : null;
         return MaterialPageRoute<void>(
-          builder: (_) => const AlarmRingingScreen(),
+          builder: (_) => AlarmRingingScreen(destinationPlace: place),
         );
       default:
         return MaterialPageRoute<void>(

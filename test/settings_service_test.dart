@@ -57,6 +57,19 @@ void main() {
       expect(updatedDark, true);
     });
 
+    test('isVibrationEnabled returns true by default and setVibrationEnabled updates persistent value', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final service = SettingsService(preferences: prefs);
+
+      final defaultVibration = await service.isVibrationEnabled();
+      expect(defaultVibration, true);
+
+      await service.setVibrationEnabled(false);
+      final updatedVibration = await service.isVibrationEnabled();
+      expect(updatedVibration, false);
+    });
+
     test('radiusToIndex and indexToRadius convert correctly', () {
       expect(SettingsService.radiusToIndex('250 m'), 0);
       expect(SettingsService.radiusToIndex('500 m'), 1);

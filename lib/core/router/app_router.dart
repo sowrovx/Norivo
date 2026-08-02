@@ -45,17 +45,20 @@ class AppRouter {
         final destination = routeSettings.arguments;
         DestinationPlace? place;
         double alarmThreshold = 1000.0;
+        bool? isVibrationEnabled;
         if (destination is DestinationPlace) {
           place = destination;
         } else if (destination is Map<String, dynamic>) {
           place = destination['destinationPlace'] as DestinationPlace?;
           alarmThreshold =
               (destination['alarmThresholdMeters'] as num?)?.toDouble() ?? 1000.0;
+          isVibrationEnabled = destination['isVibrationEnabled'] as bool?;
         }
         return MaterialPageRoute<void>(
           builder: (_) => ActiveJourneyScreen(
             destinationPlace: place,
             alarmThresholdMeters: alarmThreshold,
+            isVibrationEnabled: isVibrationEnabled,
           ),
         );
       case alarmRinging:

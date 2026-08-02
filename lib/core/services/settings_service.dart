@@ -87,6 +87,28 @@ class SettingsService {
     }
   }
 
+  /// Gets whether vibration is enabled. Defaults to true.
+  Future<bool> isVibrationEnabled() async {
+    try {
+      final prefs = await _getPrefs();
+      return prefs.getBool(keyVibration) ?? true;
+    } catch (e) {
+      debugPrint('Error reading vibration setting: $e');
+      return true;
+    }
+  }
+
+  /// Saves whether vibration is enabled.
+  Future<bool> setVibrationEnabled(bool enabled) async {
+    try {
+      final prefs = await _getPrefs();
+      return await prefs.setBool(keyVibration, enabled);
+    } catch (e) {
+      debugPrint('Error saving vibration setting: $e');
+      return false;
+    }
+  }
+
   /// Saves the default arrival radius string (e.g. '250 m', '500 m', '1 km', '2 km', '5 km').
   Future<bool> setDefaultRadius(String radius) async {
     try {

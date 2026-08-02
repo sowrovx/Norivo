@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:norivo/core/models/destination_place.dart';
+import 'package:norivo/core/services/settings_service.dart';
 import 'package:norivo/features/active_journey/active_journey_screen.dart';
 import 'package:norivo/features/alarm_setup/alarm_setup_screen.dart';
 
@@ -43,6 +44,31 @@ void main() {
     expect(find.text('Wake-up Distance'), findsOneWidget);
     expect(find.text('Alarm Settings'), findsOneWidget);
     expect(find.text('Start Journey'), findsOneWidget);
+  });
+
+  testWidgets('AlarmSetupScreen preselects saved vibration setting from SettingsService', (
+    WidgetTester tester,
+  ) async {
+    await SettingsService.instance.setVibrationEnabled(false);
+
+    const place = DestinationPlace(
+      name: 'KL Sentral',
+      address: 'Kuala Lumpur',
+      latitude: 3.1342,
+      longitude: 101.6861,
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: AlarmSetupScreen(destinationPlace: place),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final vibrationTile = tester.widget<SwitchListTile>(
+      find.widgetWithText(SwitchListTile, 'Vibration'),
+    );
+    expect(vibrationTile.value, false);
   });
 
   testWidgets('renders error view when no destination is provided to ActiveJourneyScreen', (

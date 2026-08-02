@@ -40,11 +40,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final radius = await SettingsService.instance.getDefaultRadius();
     final volume = await SettingsService.instance.getAlarmVolume();
     final isDark = await SettingsService.instance.isDarkMode();
+    final vibration = await SettingsService.instance.isVibrationEnabled();
     if (!mounted) return;
     setState(() {
       _selectedDefaultRadius = radius;
       _alarmVolume = volume;
       _isDarkMode = isDark;
+      _isVibrationEnabled = vibration;
     });
   }
 
@@ -357,6 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       setState(() {
                         _isVibrationEnabled = val;
                       });
+                      SettingsService.instance.setVibrationEnabled(val);
                     },
                   ),
                   Divider(color: Theme.of(context).dividerColor, height: 1),

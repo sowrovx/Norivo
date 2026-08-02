@@ -26,11 +26,13 @@ class ActiveJourneyScreen extends StatefulWidget {
     this.destinationPlace,
     this.routeService,
     this.alarmThresholdMeters = 1000.0,
+    this.isVibrationEnabled,
   });
 
   final DestinationPlace? destinationPlace;
   final RouteService? routeService;
   final double alarmThresholdMeters;
+  final bool? isVibrationEnabled;
 
   @override
   State<ActiveJourneyScreen> createState() => _ActiveJourneyScreenState();
@@ -65,11 +67,9 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
       final permission = await LocationService.checkAndRequestPermission();
       if (permission != LocationPermissionState.granted) return;
 
-      _positionSubscription = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 10,
-        ),
+      _positionSubscription = LocationService.getPositionStream(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10,
       ).listen(
         (position) {
           _onLocationUpdated(position);
@@ -100,7 +100,9 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
 
     if (!_hasTriggeredAlarm && distance <= widget.alarmThresholdMeters) {
       _hasTriggeredAlarm = true;
-      AlarmService.instance.startAlarm();
+      AlarmService.instance.startAlarm(
+        isVibrationEnabled: widget.isVibrationEnabled,
+      );
       Navigator.of(context).pushNamed(
         AppRouter.alarmRinging,
         arguments: widget.destinationPlace,

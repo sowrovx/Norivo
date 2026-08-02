@@ -19,31 +19,32 @@ class AlarmService {
   bool get isPlaying => _isPlaying;
 
   /// Starts playing looping alarm sound and vibrating the device.
-  Future<void> startAlarm() async {
-    debugPrint('[AlarmService] startAlarm() invoked. isPlaying=$_isPlaying');
+  Future<void> startAlarm({bool? isVibrationEnabled}) async {
+    debugPrint('[AlarmService] startAlarm() invoked. isPlaying=$_isPlaying, isVibrationEnabled=$isVibrationEnabled');
     if (_isPlaying) return;
     _isPlaying = true;
 
     try {
       debugPrint('[AlarmService] Configuring AudioContext for alarm playback...');
-      await AudioPlayer.global.setAudioContext(
-        AudioContext(
-          iOS: AudioContextIOS(
-            category: AVAudioSessionCategory.playback,
-            options: {
-              AVAudioSessionOptions.mixWithOthers,
-              AVAudioSessionOptions.duckOthers,
-            },
-          ),
-          android: const AudioContextAndroid(
-            isSpeakerphoneOn: true,
-            stayAwake: true,
-            contentType: AndroidContentType.sonification,
-            usageType: AndroidUsageType.alarm,
-            audioFocus: AndroidAudioFocus.gainTransient,
-          ),
+      final audioContext = AudioContext(
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.playback,
+          options: {
+            AVAudioSessionOptions.mixWithOthers,
+            AVAudioSessionOptions.duckOthers,
+          },
+        ),
+        android: const AudioContextAndroid(
+          isSpeakerphoneOn: true,
+          stayAwake: true,
+          contentType: AndroidContentType.sonification,
+          usageType: AndroidUsageType.alarm,
+          audioFocus: AndroidAudioFocus.gain,
         ),
       );
+
+      await AudioPlayer.global.setAudioContext(audioContext);
+      await _player.setAudioContext(audioContext);
 
       await _player.setReleaseMode(ReleaseMode.loop);
       final volume = await SettingsService.instance.getAlarmVolume();
@@ -67,18 +68,23 @@ class AlarmService {
     }
 
     try {
-      debugPrint('[AlarmService] Initiating vibration pattern...');
-      final hasVibrator = await Vibration.hasVibrator();
-      if (hasVibrator == true) {
-        Vibration.vibrate(pattern: [500, 500, 500, 500], repeat: 0);
-        debugPrint('[AlarmService] Vibration pattern started.');
+      final shouldVibrate = isVibrationEnabled ?? await SettingsService.instance.isVibrationEnabled();
+      if (!shouldVibrate) {
+        debugPrint('[AlarmService] Vibration is disabled for this journey. Skipping vibration.');
       } else {
-        _vibrationTimer?.cancel();
-        _vibrationTimer = Timer.periodic(
-          const Duration(milliseconds: 1000),
-          (_) => HapticFeedback.vibrate(),
-        );
-        debugPrint('[AlarmService] HapticFeedback vibration timer started.');
+        debugPrint('[AlarmService] Initiating vibration pattern...');
+        final hasVibrator = await Vibration.hasVibrator();
+        if (hasVibrator == true) {
+          Vibration.vibrate(pattern: [500, 500, 500, 500], repeat: 0);
+          debugPrint('[AlarmService] Vibration pattern started.');
+        } else {
+          _vibrationTimer?.cancel();
+          _vibrationTimer = Timer.periodic(
+            const Duration(milliseconds: 1000),
+            (_) => HapticFeedback.vibrate(),
+          );
+          debugPrint('[AlarmService] HapticFeedback vibration timer started.');
+        }
       }
     } catch (e) {
       debugPrint('[AlarmService] Error starting vibration: $e');

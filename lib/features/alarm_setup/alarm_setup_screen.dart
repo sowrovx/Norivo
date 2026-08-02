@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../core/models/destination_place.dart';
 import '../../core/models/route_result.dart';
 import '../../core/router/app_router.dart';
+import '../../core/services/alarm_service.dart';
 import '../../core/services/destination_search_service.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/route_service.dart';
@@ -57,10 +58,12 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
   Future<void> _loadSavedSettings() async {
     try {
       final savedRadius = await SettingsService.instance.getDefaultRadius();
+      final savedVibration = await SettingsService.instance.isVibrationEnabled();
       final index = SettingsService.radiusToIndex(savedRadius);
       if (!mounted) return;
       setState(() {
         _selectedDistanceIndex = index;
+        _isVibrationOn = savedVibration;
       });
     } catch (e) {
       debugPrint('Error loading saved settings in AlarmSetupScreen: $e');
@@ -162,12 +165,14 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
       arguments: {
         'destinationPlace': widget.destinationPlace,
         'alarmThresholdMeters': _selectedRadiusMeters,
+        'isVibrationEnabled': _isVibrationOn,
       },
     );
   }
 
   void _onPreviewAlarm() {
     FocusScope.of(context).unfocus();
+    AlarmService.instance.startAlarm(isVibrationEnabled: _isVibrationOn);
     Navigator.of(context).pushNamed(
       AppRouter.alarmRinging,
       arguments: widget.destinationPlace,

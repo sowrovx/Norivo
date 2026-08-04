@@ -2,14 +2,26 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'settings_service.dart';
+
 enum LocationPermissionState { unknown, granted, denied, permanentlyDenied }
 
 class LocationService {
   const LocationService._();
 
-  static Future<LocationPermissionState> checkAndRequestPermission() async {
+  static Future<LocationPermissionState> checkAndRequestPermission({
+    bool isBackground = false,
+  }) async {
     final status = await Permission.location.status;
     if (status.isGranted) {
+      if (isBackground &&
+          (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS)) {
+        final alwaysStatus = await Permission.locationAlways.status;
+        if (!alwaysStatus.isGranted) {
+          await Permission.locationAlways.request();
+        }
+      }
       return LocationPermissionState.granted;
     }
 
@@ -19,6 +31,14 @@ class LocationService {
 
     final requested = await Permission.location.request();
     if (requested.isGranted) {
+      if (isBackground &&
+          (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS)) {
+        final alwaysStatus = await Permission.locationAlways.status;
+        if (!alwaysStatus.isGranted) {
+          await Permission.locationAlways.request();
+        }
+      }
       return LocationPermissionState.granted;
     }
 
@@ -40,23 +60,36 @@ class LocationService {
       return null;
     }
 
+    final isHighAccuracy = await SettingsService.instance.isHighAccuracyGps();
+    final accuracy = isHighAccuracy ? LocationAccuracy.high : LocationAccuracy.medium;
+
     return Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      locationSettings: LocationSettings(accuracy: accuracy),
     );
+  }
+
+  static Future<void> requestNotificationPermission() async {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final status = await Permission.notification.status;
+      if (!status.isGranted) {
+        await Permission.notification.request();
+      }
+    }
   }
 
   static Stream<Position> getPositionStream({
     LocationAccuracy accuracy = LocationAccuracy.high,
     int distanceFilter = 10,
+    bool isBackgroundTracking = true,
   }) {
     late final LocationSettings locationSettings;
 
-    if (defaultTargetPlatform == TargetPlatform.android) {
+    if (isBackgroundTracking && defaultTargetPlatform == TargetPlatform.android) {
       locationSettings = AndroidSettings(
         accuracy: accuracy,
-        distanceFilter: distanceFilter,
+        distanceFilter: 0,
         forceLocationManager: false,
-        intervalDuration: const Duration(seconds: 5),
+        intervalDuration: const Duration(seconds: 3),
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'Norivo Journey Active',
           notificationText: 'Tracking location in background to wake you up before arrival.',
@@ -64,8 +97,9 @@ class LocationService {
           enableWakeLock: true,
         ),
       );
-    } else if (defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.macOS) {
+    } else if (isBackgroundTracking &&
+        (defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.macOS)) {
       locationSettings = AppleSettings(
         accuracy: accuracy,
         activityType: ActivityType.fitness,

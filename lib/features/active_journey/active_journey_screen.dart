@@ -2,12 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../core/models/destination_place.dart';
 import '../../core/models/route_result.dart';
 import '../../core/router/app_router.dart';
-import '../../core/services/alarm_service.dart';
 import '../../core/services/destination_search_service.dart';
+import '../../core/services/journey_service.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/route_service.dart';
 import '../../core/theme/app_colors.dart';
@@ -42,111 +43,109 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   Position? _currentPosition;
   RouteResult? _routeResult;
   late final RouteService _routeService;
-  StreamSubscription<Position>? _positionSubscription;
-  bool _hasTriggeredAlarm = false;
 
   @override
   void initState() {
     super.initState();
     _routeService = widget.routeService ?? RouteService();
-    _loadLocationAndRoute();
-    _initPositionSubscription();
+    final currentJourney = JourneyService.instance.currentJourney;
+    if (widget.destinationPlace != null &&
+        (currentJourney == null ||
+            currentJourney.destinationPlace.latitude != widget.destinationPlace!.latitude ||
+            currentJourney.destinationPlace.longitude != widget.destinationPlace!.longitude ||
+            currentJourney.destinationPlace.name != widget.destinationPlace!.name)) {
+      JourneyService.instance.startJourney(
+        destinationPlace: widget.destinationPlace!,
+        alarmThresholdMeters: widget.alarmThresholdMeters,
+        isVibrationEnabled: widget.isVibrationEnabled ?? true,
+      );
+    }
+
+    _currentPosition = JourneyService.instance.currentPositionNotifier.value;
+    _routeResult = JourneyService.instance.routeResultNotifier.value;
+
+    JourneyService.instance.currentPositionNotifier.addListener(_onPositionChanged);
+    JourneyService.instance.routeResultNotifier.addListener(_onRouteChanged);
+
+    if (_currentPosition == null) {
+      _loadLocationAndRoute();
+    }
+  }
+
+  void _onPositionChanged() {
+    if (!mounted) return;
+    setState(() {
+      _currentPosition = JourneyService.instance.currentPositionNotifier.value;
+    });
+  }
+
+  void _onRouteChanged() {
+    if (!mounted) return;
+    setState(() {
+      _routeResult = JourneyService.instance.routeResultNotifier.value;
+    });
   }
 
   @override
   void dispose() {
-    _positionSubscription?.cancel();
+    JourneyService.instance.currentPositionNotifier.removeListener(_onPositionChanged);
+    JourneyService.instance.routeResultNotifier.removeListener(_onRouteChanged);
     super.dispose();
   }
 
-  Future<void> _initPositionSubscription() async {
-    try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
-
-      final permission = await LocationService.checkAndRequestPermission();
-      if (permission != LocationPermissionState.granted) return;
-
-      _positionSubscription = LocationService.getPositionStream(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10,
-      ).listen(
-        (position) {
-          _onLocationUpdated(position);
-        },
-        onError: (error) {
-          debugPrint('Active Journey position stream error: $error');
-        },
-      );
-    } catch (e) {
-      debugPrint('Error starting active journey position stream: $e');
-    }
-  }
-
-  Future<void> _onLocationUpdated(Position position) async {
-    if (!mounted) return;
-    setState(() {
-      _currentPosition = position;
-    });
-
-    if (widget.destinationPlace == null) return;
-
-    final distance = Geolocator.distanceBetween(
-      position.latitude,
-      position.longitude,
-      widget.destinationPlace!.latitude,
-      widget.destinationPlace!.longitude,
-    );
-
-    if (!_hasTriggeredAlarm && distance <= widget.alarmThresholdMeters) {
-      _hasTriggeredAlarm = true;
-      AlarmService.instance.startAlarm(
-        isVibrationEnabled: widget.isVibrationEnabled,
-      );
-      Navigator.of(context).pushNamed(
-        AppRouter.alarmRinging,
-        arguments: widget.destinationPlace,
-      );
-      return;
-    }
-
-    try {
-      final route = await _routeService.calculateRoute(
-        startLatitude: position.latitude,
-        startLongitude: position.longitude,
-        destinationLatitude: widget.destinationPlace!.latitude,
-        destinationLongitude: widget.destinationPlace!.longitude,
-      );
-      if (!mounted) return;
-      setState(() {
-        _routeResult = route;
-      });
-    } catch (e) {
-      debugPrint('Active Journey live route update error: $e');
-    }
-  }
+  DestinationPlace? get _effectiveDestinationPlace =>
+      widget.destinationPlace ?? JourneyService.instance.currentJourney?.destinationPlace;
 
   Future<void> _loadLocationAndRoute() async {
     try {
       final pos = await LocationService.getCurrentPosition();
       if (!mounted) return;
       if (pos != null) {
-        _onLocationUpdated(pos);
+        _currentPosition = pos;
+        final target = _effectiveDestinationPlace;
+        if (target != null) {
+          final route = await _routeService.calculateRoute(
+            startLatitude: pos.latitude,
+            startLongitude: pos.longitude,
+            destinationLatitude: target.latitude,
+            destinationLongitude: target.longitude,
+          );
+          if (!mounted) return;
+          setState(() {
+            _routeResult = route;
+          });
+        }
       }
     } catch (e) {
       debugPrint('Location load error in ActiveJourneyScreen: $e');
     }
   }
 
+  void _onNavTap(int index) {
+    if (index == 0) {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRouter.home,
+        (route) => false,
+      );
+    } else if (index == 2) {
+      Navigator.of(context).pushNamed(AppRouter.history);
+    } else if (index == 3) {
+      Navigator.of(context).pushNamed(AppRouter.settings);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tab under development'),
+          duration: Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _endJourney() async {
     FocusScope.of(context).unfocus();
 
-    await _positionSubscription?.cancel();
-    _positionSubscription = null;
-
-    _hasTriggeredAlarm = true;
-
-    await AlarmService.instance.stopAlarm();
+    await JourneyService.instance.stopJourney();
 
     if (!mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil(
@@ -156,34 +155,65 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   }
 
   double? get _distanceMeters {
-    if (_routeResult != null) {
-      return _routeResult!.distanceMeters;
-    }
-    if (_currentPosition == null || widget.destinationPlace == null) {
+    final target = _effectiveDestinationPlace;
+    if (_currentPosition == null || target == null) {
       return null;
     }
+
+    final pos = _currentPosition!;
+    final polyline = _routeResult?.polyline;
+
+    if (polyline != null && polyline.length >= 2) {
+      int closestIndex = 0;
+      double minDistance = double.infinity;
+
+      for (int i = 0; i < polyline.length; i++) {
+        final dist = Geolocator.distanceBetween(
+          pos.latitude,
+          pos.longitude,
+          polyline[i].latitude,
+          polyline[i].longitude,
+        );
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestIndex = i;
+        }
+      }
+
+      double remainingMeters = minDistance;
+      for (int i = closestIndex; i < polyline.length - 1; i++) {
+        remainingMeters += Geolocator.distanceBetween(
+          polyline[i].latitude,
+          polyline[i].longitude,
+          polyline[i + 1].latitude,
+          polyline[i + 1].longitude,
+        );
+      }
+      return remainingMeters;
+    }
+
     return Geolocator.distanceBetween(
-      _currentPosition!.latitude,
-      _currentPosition!.longitude,
-      widget.destinationPlace!.latitude,
-      widget.destinationPlace!.longitude,
+      pos.latitude,
+      pos.longitude,
+      target.latitude,
+      target.longitude,
     );
   }
 
   String get _remainingDistanceText {
-    if (_routeResult != null) {
-      return _routeResult!.formattedDistance;
-    }
     if (_distanceMeters == null) return '--';
     return DestinationSearchService.formatDistance(_distanceMeters!);
   }
 
   String get _remainingTimeText {
-    if (_routeResult != null) {
-      return _routeResult!.formattedDuration;
-    }
     if (_distanceMeters == null) return '--';
-    final totalMins = (_distanceMeters! / 833).round();
+    final speed = (_routeResult != null &&
+            _routeResult!.distanceMeters > 0 &&
+            _routeResult!.durationSeconds > 0)
+        ? (_routeResult!.distanceMeters / _routeResult!.durationSeconds)
+        : (50000 / 3600);
+    final remainingSeconds = _distanceMeters! / speed;
+    final totalMins = (remainingSeconds / 60).round();
     if (totalMins < 1) return '< 1 min';
     if (totalMins < 60) return '$totalMins mins';
     final hrs = totalMins ~/ 60;
@@ -192,12 +222,14 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   }
 
   String get _etaText {
-    if (_routeResult != null) {
-      return _routeResult!.formattedEtaTime;
-    }
     if (_distanceMeters == null) return '--';
-    final totalMins = (_distanceMeters! / 833).round();
-    final arrivalTime = DateTime.now().add(Duration(minutes: totalMins));
+    final speed = (_routeResult != null &&
+            _routeResult!.distanceMeters > 0 &&
+            _routeResult!.durationSeconds > 0)
+        ? (_routeResult!.distanceMeters / _routeResult!.durationSeconds)
+        : (50000 / 3600);
+    final remainingSeconds = _distanceMeters! / speed;
+    final arrivalTime = DateTime.now().add(Duration(seconds: remainingSeconds.round()));
     final hour = arrivalTime.hour % 12 == 0 ? 12 : arrivalTime.hour % 12;
     final minute = arrivalTime.minute.toString().padLeft(2, '0');
     final period = arrivalTime.hour >= 12 ? 'PM' : 'AM';
@@ -215,7 +247,8 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.destinationPlace == null) {
+    final effectivePlace = _effectiveDestinationPlace;
+    if (effectivePlace == null) {
       return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: SafeArea(
@@ -258,7 +291,7 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
       );
     }
 
-    final destinationName = widget.destinationPlace!.name;
+    final destinationName = effectivePlace.name;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -274,7 +307,7 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
                       FocusScope.of(context).unfocus();
                       Navigator.of(context).pushNamed(
                         AppRouter.alarmSetup,
-                        arguments: widget.destinationPlace,
+                        arguments: effectivePlace,
                       );
                     },
                     icon: const Icon(Icons.arrow_back_ios_new_rounded),
@@ -382,8 +415,11 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
                     ),
                     const SizedBox(height: 16),
                     CurrentLocationMapCard(
-                      destinationPlace: widget.destinationPlace,
+                      destinationPlace: effectivePlace,
                       routePolyline: _routeResult?.polyline,
+                      currentPosition: _currentPosition != null
+                          ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+                          : null,
                     ),
                     const SizedBox(height: 16),
                     AlarmStatusCard(
@@ -454,7 +490,10 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: const AppBottomNavigation(currentIndex: 2),
+      bottomNavigationBar: AppBottomNavigation(
+        currentIndex: 2,
+        onTap: _onNavTap,
+      ),
     );
   }
 }

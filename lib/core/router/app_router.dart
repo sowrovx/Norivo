@@ -4,10 +4,14 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../core/models/destination_place.dart';
+import '../../core/models/journey_history_record.dart';
+import '../../core/services/journey_service.dart';
 import '../../features/active_journey/active_journey_screen.dart';
 import '../../features/alarm_ringing/alarm_ringing_screen.dart';
 import '../../features/alarm_setup/alarm_setup_screen.dart';
 import '../../features/destination_search/destination_search_screen.dart';
+import '../../features/history/history_screen.dart';
+import '../../features/history/journey_summary_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/splash/splash_screen.dart';
@@ -22,6 +26,8 @@ class AppRouter {
   static const String activeJourney = '/active-journey';
   static const String alarmRinging = '/alarm-ringing';
   static const String settings = '/settings';
+  static const String history = '/history';
+  static const String journeySummary = '/journey-summary';
 
   static Route<dynamic> onGenerateRoute(RouteSettings routeSettings) {
     switch (routeSettings.name) {
@@ -54,6 +60,7 @@ class AppRouter {
               (destination['alarmThresholdMeters'] as num?)?.toDouble() ?? 1000.0;
           isVibrationEnabled = destination['isVibrationEnabled'] as bool?;
         }
+        place ??= JourneyService.instance.currentJourney?.destinationPlace;
         return MaterialPageRoute<void>(
           builder: (_) => ActiveJourneyScreen(
             destinationPlace: place,
@@ -66,6 +73,20 @@ class AppRouter {
         final place = destination is DestinationPlace ? destination : null;
         return MaterialPageRoute<void>(
           builder: (_) => AlarmRingingScreen(destinationPlace: place),
+        );
+      case history:
+        return MaterialPageRoute<void>(builder: (_) => const HistoryScreen());
+      case journeySummary:
+        final record = routeSettings.arguments;
+        if (record is JourneyHistoryRecord) {
+          return MaterialPageRoute<void>(
+            builder: (_) => JourneySummaryScreen(record: record),
+          );
+        }
+        return MaterialPageRoute<void>(
+          builder: (_) => const Scaffold(
+            body: Center(child: Text('Invalid Journey History Record')),
+          ),
         );
       default:
         return MaterialPageRoute<void>(

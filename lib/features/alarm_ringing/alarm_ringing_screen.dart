@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/models/destination_place.dart';
 import '../../core/router/app_router.dart';
 import '../../core/services/alarm_service.dart';
+import '../../core/services/journey_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../shared/widgets/primary_button.dart';
@@ -143,9 +144,10 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen>
                 const SizedBox(height: 24),
                 PrimaryButton(
                   label: 'Stop Alarm',
-                  onPressed: () {
+                  onPressed: () async {
                     FocusScope.of(context).unfocus();
-                    AlarmService.instance.stopAlarm();
+                    await JourneyService.instance.stopJourney();
+                    if (!context.mounted) return;
                     Navigator.of(
                       context,
                     ).pushNamedAndRemoveUntil(AppRouter.home, (route) => false);
@@ -156,8 +158,9 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen>
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      AlarmService.instance.stopAlarm();
+                    onPressed: () async {
+                      await JourneyService.instance.stopJourney();
+                      if (!context.mounted) return;
                       Navigator.of(
                         context,
                       ).pushNamedAndRemoveUntil(AppRouter.home, (route) => false);

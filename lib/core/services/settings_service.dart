@@ -109,6 +109,50 @@ class SettingsService {
     }
   }
 
+  /// Gets whether High Accuracy GPS is enabled. Defaults to true.
+  Future<bool> isHighAccuracyGps() async {
+    try {
+      final prefs = await _getPrefs();
+      return prefs.getBool(keyHighAccuracyGps) ?? true;
+    } catch (e) {
+      debugPrint('Error reading High Accuracy GPS setting: $e');
+      return true;
+    }
+  }
+
+  /// Saves whether High Accuracy GPS is enabled.
+  Future<bool> setHighAccuracyGps(bool enabled) async {
+    try {
+      final prefs = await _getPrefs();
+      return await prefs.setBool(keyHighAccuracyGps, enabled);
+    } catch (e) {
+      debugPrint('Error saving High Accuracy GPS setting: $e');
+      return false;
+    }
+  }
+
+  /// Gets whether Background Location tracking is enabled. Defaults to true.
+  Future<bool> isBackgroundTracking() async {
+    try {
+      final prefs = await _getPrefs();
+      return prefs.getBool(keyBackgroundTracking) ?? true;
+    } catch (e) {
+      debugPrint('Error reading Background Tracking setting: $e');
+      return true;
+    }
+  }
+
+  /// Saves whether Background Location tracking is enabled.
+  Future<bool> setBackgroundTracking(bool enabled) async {
+    try {
+      final prefs = await _getPrefs();
+      return await prefs.setBool(keyBackgroundTracking, enabled);
+    } catch (e) {
+      debugPrint('Error saving Background Tracking setting: $e');
+      return false;
+    }
+  }
+
   /// Saves the default arrival radius string (e.g. '250 m', '500 m', '1 km', '2 km', '5 km').
   Future<bool> setDefaultRadius(String radius) async {
     try {
@@ -153,6 +197,28 @@ class SettingsService {
         return '5 km';
       default:
         return '1 km';
+    }
+  }
+
+  /// Gets the selected travel mode. Defaults to 'Drive'.
+  Future<String> getTravelMode() async {
+    try {
+      final prefs = await _getPrefs();
+      return prefs.getString(keyTravelMode) ?? 'Drive';
+    } catch (e) {
+      debugPrint('Error reading travel mode setting: $e');
+      return 'Drive';
+    }
+  }
+
+  /// Sets the selected travel mode.
+  Future<bool> setTravelMode(String mode) async {
+    try {
+      final prefs = await _getPrefs();
+      return await prefs.setString(keyTravelMode, mode);
+    } catch (e) {
+      debugPrint('Error saving travel mode setting: $e');
+      return false;
     }
   }
 }

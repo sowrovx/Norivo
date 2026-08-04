@@ -70,6 +70,32 @@ void main() {
       expect(updatedVibration, false);
     });
 
+    test('isHighAccuracyGps returns true by default and setHighAccuracyGps updates persistent value', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final service = SettingsService(preferences: prefs);
+
+      final defaultGps = await service.isHighAccuracyGps();
+      expect(defaultGps, true);
+
+      await service.setHighAccuracyGps(false);
+      final updatedGps = await service.isHighAccuracyGps();
+      expect(updatedGps, false);
+    });
+
+    test('isBackgroundTracking returns true by default and setBackgroundTracking updates persistent value', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final service = SettingsService(preferences: prefs);
+
+      final defaultBg = await service.isBackgroundTracking();
+      expect(defaultBg, true);
+
+      await service.setBackgroundTracking(false);
+      final updatedBg = await service.isBackgroundTracking();
+      expect(updatedBg, false);
+    });
+
     test('radiusToIndex and indexToRadius convert correctly', () {
       expect(SettingsService.radiusToIndex('250 m'), 0);
       expect(SettingsService.radiusToIndex('500 m'), 1);

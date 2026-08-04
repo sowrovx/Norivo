@@ -6,6 +6,7 @@ import '../../core/models/route_result.dart';
 import '../../core/router/app_router.dart';
 import '../../core/services/alarm_service.dart';
 import '../../core/services/destination_search_service.dart';
+import '../../core/services/journey_service.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/route_service.dart';
 import '../../core/services/settings_service.dart';
@@ -160,6 +161,13 @@ class _AlarmSetupScreenState extends State<AlarmSetupScreen> {
 
   void _onStartJourney() {
     FocusScope.of(context).unfocus();
+    if (widget.destinationPlace != null) {
+      JourneyService.instance.startJourney(
+        destinationPlace: widget.destinationPlace!,
+        alarmThresholdMeters: _selectedRadiusMeters,
+        isVibrationEnabled: _isVibrationOn,
+      );
+    }
     Navigator.of(context).pushNamed(
       AppRouter.activeJourney,
       arguments: {

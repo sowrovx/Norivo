@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../core/router/app_router.dart';
+import '../core/services/journey_service.dart';
 import '../core/services/settings_service.dart';
 import '../core/theme/app_theme.dart';
 
@@ -27,6 +28,7 @@ class _NorivoAppState extends State<NorivoApp> {
       valueListenable: SettingsService.instance.themeModeNotifier,
       builder: (context, themeMode, _) {
         return MaterialApp(
+          navigatorKey: JourneyService.navigatorKey,
           title: 'Norivo',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,

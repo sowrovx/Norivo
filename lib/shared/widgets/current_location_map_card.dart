@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/models/destination_place.dart';
+import '../../core/services/journey_service.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/map_service.dart';
 import '../../core/theme/app_colors.dart';
@@ -17,10 +18,12 @@ class CurrentLocationMapCard extends StatefulWidget {
     super.key,
     this.destinationPlace,
     this.routePolyline,
+    this.currentPosition,
   });
 
   final DestinationPlace? destinationPlace;
   final List<LatLng>? routePolyline;
+  final LatLng? currentPosition;
 
   @override
   State<CurrentLocationMapCard> createState() => _CurrentLocationMapCardState();
@@ -39,7 +42,40 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
   @override
   void initState() {
     super.initState();
+    if (widget.currentPosition != null) {
+      _center = widget.currentPosition;
+      _isLoading = false;
+    } else if (JourneyService.instance.currentPositionNotifier.value != null) {
+      final pos = JourneyService.instance.currentPositionNotifier.value!;
+      _center = LatLng(pos.latitude, pos.longitude);
+      _isLoading = false;
+    }
     _loadLocation();
+    JourneyService.instance.currentPositionNotifier.addListener(_onJourneyPositionChanged);
+  }
+
+  void _onJourneyPositionChanged() {
+    final pos = JourneyService.instance.currentPositionNotifier.value;
+    if (pos != null) {
+      _updateUserPosition(LatLng(pos.latitude, pos.longitude));
+    }
+  }
+
+  void _updateUserPosition(LatLng newPos) {
+    if (!mounted) return;
+    setState(() {
+      _center = newPos;
+      _isLoading = false;
+      _errorMessage = null;
+    });
+
+    if (_isMapReady && !_hasFittedRoute) {
+      if (widget.routePolyline != null && widget.routePolyline!.isNotEmpty) {
+        _fitMapToRoute();
+      } else {
+        _mapController.move(newPos, 15);
+      }
+    }
   }
 
   Future<void> _loadLocation() async {
@@ -170,6 +206,9 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
   @override
   void didUpdateWidget(covariant CurrentLocationMapCard oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.currentPosition != null && widget.currentPosition != oldWidget.currentPosition) {
+      _updateUserPosition(widget.currentPosition!);
+    }
     if (_isMapReady &&
         !_hasFittedRoute &&
         widget.routePolyline != null &&
@@ -179,6 +218,12 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
         _fitMapToRoute();
       });
     }
+  }
+
+  @override
+  void dispose() {
+    JourneyService.instance.currentPositionNotifier.removeListener(_onJourneyPositionChanged);
+    super.dispose();
   }
 
   void _onPanUpdate(DragUpdateDetails details) {

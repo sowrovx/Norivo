@@ -41,12 +41,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final volume = await SettingsService.instance.getAlarmVolume();
     final isDark = await SettingsService.instance.isDarkMode();
     final vibration = await SettingsService.instance.isVibrationEnabled();
+    final highGps = await SettingsService.instance.isHighAccuracyGps();
+    final bgTracking = await SettingsService.instance.isBackgroundTracking();
     if (!mounted) return;
     setState(() {
       _selectedDefaultRadius = radius;
       _alarmVolume = volume;
       _isDarkMode = isDark;
       _isVibrationEnabled = vibration;
+      _isHighAccuracyGps = highGps;
+      _isBackgroundTracking = bgTracking;
     });
   }
 
@@ -74,6 +78,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       Navigator.of(
         context,
       ).pushNamedAndRemoveUntil(AppRouter.home, (route) => false);
+    } else if (index == 2) {
+      Navigator.of(context).pushNamed(AppRouter.history);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -488,6 +494,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       setState(() {
                         _isHighAccuracyGps = val;
                       });
+                      SettingsService.instance.setHighAccuracyGps(val);
                     },
                   ),
                   Divider(color: Theme.of(context).dividerColor, height: 1),
@@ -512,6 +519,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       setState(() {
                         _isBackgroundTracking = val;
                       });
+                      SettingsService.instance.setBackgroundTracking(val);
                     },
                   ),
                 ],

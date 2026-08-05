@@ -49,70 +49,177 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  Future<bool?> _confirmDeleteSingle(JourneyHistoryRecord record) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            'Delete Journey Record',
+            style: AppTextStyles.sectionHeader,
+          ),
+          content: Text(
+            'Are you sure you want to delete the journey history record for "${record.destinationName}"?',
+            style: AppTextStyles.body,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4444),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _onClearAllPressed() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            'Clear Journey History',
+            style: AppTextStyles.sectionHeader,
+          ),
+          content: const Text(
+            'Are you sure you want to clear all journey history records? This action cannot be undone.',
+            style: AppTextStyles.body,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4444),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Clear All'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await JourneyHistoryService.instance.clearHistory();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Journey History',
-          style: AppTextStyles.heading1,
-        ),
-      ),
-      body: SafeArea(
-        child: ValueListenableBuilder<List<JourneyHistoryRecord>>(
-          valueListenable: JourneyHistoryService.instance.historyNotifier,
-          builder: (context, records, child) {
-            if (records.isEmpty) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.history_rounded,
-                        size: 64,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'No Journey History Yet',
-                        style: AppTextStyles.sectionHeader,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Completed and cancelled journeys will automatically appear here.',
-                        style: AppTextStyles.subtitle,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+    return ValueListenableBuilder<List<JourneyHistoryRecord>>(
+      valueListenable: JourneyHistoryService.instance.historyNotifier,
+      builder: (context, records, child) {
+        return Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            title: const Text(
+              'Journey History',
+              style: AppTextStyles.heading1,
+            ),
+            actions: [
+              if (records.isNotEmpty)
+                TextButton.icon(
+                  onPressed: _onClearAllPressed,
+                  icon: const Icon(
+                    Icons.delete_sweep_rounded,
+                    size: 18,
+                    color: Color(0xFFEF4444),
+                  ),
+                  label: const Text(
+                    'Clear All',
+                    style: TextStyle(
+                      color: Color(0xFFEF4444),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              );
-            }
-
-            return ListView.separated(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              itemCount: records.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final record = records[index];
-                return _buildHistoryCard(context, record);
-              },
-            );
-          },
-        ),
-      ),
-      bottomNavigationBar: AppBottomNavigation(
-        currentIndex: 2,
-        onTap: _onNavTap,
-      ),
+            ],
+          ),
+          body: SafeArea(
+            child: records.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.history_rounded,
+                            size: 64,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'No Journey History Yet',
+                            style: AppTextStyles.sectionHeader,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Completed and cancelled journeys will automatically appear here.',
+                            style: AppTextStyles.subtitle,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    itemCount: records.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final record = records[index];
+                      return Dismissible(
+                        key: Key(record.id),
+                        direction: DismissDirection.endToStart,
+                        confirmDismiss: (_) => _confirmDeleteSingle(record),
+                        onDismissed: (_) {
+                          JourneyHistoryService.instance.deleteRecord(record.id);
+                        },
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(
+                            Icons.delete_outline_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        child: _buildHistoryCard(context, record),
+                      );
+                    },
+                  ),
+          ),
+          bottomNavigationBar: AppBottomNavigation(
+            currentIndex: 2,
+            onTap: _onNavTap,
+          ),
+        );
+      },
     );
   }
 
@@ -214,7 +321,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              IconButton(
+                icon: Icon(
+                  Icons.delete_outline_rounded,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  size: 20,
+                ),
+                onPressed: () async {
+                  final confirmed = await _confirmDeleteSingle(record);
+                  if (confirmed == true) {
+                    await JourneyHistoryService.instance.deleteRecord(record.id);
+                  }
+                },
+                tooltip: 'Delete',
+              ),
               Icon(
                 Icons.chevron_right_rounded,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,

@@ -1,14 +1,19 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/destination_place.dart';
 import '../models/journey_history_record.dart';
 import '../models/route_result.dart';
 import '../router/app_router.dart';
 import 'alarm_service.dart';
+import 'foreground_task_service.dart';
 import 'journey_history_service.dart';
+import 'journey_notification_service.dart';
 import 'location_service.dart';
 import 'route_service.dart';
 import 'settings_service.dart';
@@ -25,6 +30,26 @@ class ActiveJourneyState {
   final double alarmThresholdMeters;
   final bool isVibrationEnabled;
   final DateTime startTime;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'destinationPlace': destinationPlace.toJson(),
+      'alarmThresholdMeters': alarmThresholdMeters,
+      'isVibrationEnabled': isVibrationEnabled,
+      'startTime': startTime.toIso8601String(),
+    };
+  }
+
+  factory ActiveJourneyState.fromJson(Map<String, dynamic> json) {
+    return ActiveJourneyState(
+      destinationPlace: DestinationPlace.fromJson(
+        json['destinationPlace'] as Map<String, dynamic>,
+      ),
+      alarmThresholdMeters: (json['alarmThresholdMeters'] as num).toDouble(),
+      isVibrationEnabled: json['isVibrationEnabled'] as bool? ?? true,
+      startTime: DateTime.parse(json['startTime'] as String),
+    );
+  }
 }
 
 class JourneyService {
@@ -33,6 +58,9 @@ class JourneyService {
 
   static final JourneyService instance = JourneyService();
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static const String keyActiveJourneyState = 'norivo_active_journey_state';
+
+
 
   final RouteService _routeService;
   final AlarmService? alarmService;
@@ -52,20 +80,51 @@ class JourneyService {
   ActiveJourneyState? get currentJourney => activeJourneyNotifier.value;
   bool get hasActiveJourney => activeJourneyNotifier.value != null;
 
+  Future<ActiveJourneyState?> restoreActiveJourney() async {
+    if (hasActiveJourney) return activeJourneyNotifier.value;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      final raw = prefs.getString(keyActiveJourneyState);
+      if (raw == null || raw.isEmpty) {
+        debugPrint('[JourneyService] restoreActiveJourney: No active journey found in SharedPreferences after reload.');
+        return null;
+      }
+
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      final state = ActiveJourneyState.fromJson(json);
+      debugPrint('[JourneyService] Restoring saved active journey state for: ${state.destinationPlace.name}');
+
+      _hasTriggeredAlarm = false;
+      activeJourneyNotifier.value = state;
+
+      await _initPositionStream(state);
+      return state;
+    } catch (e) {
+      debugPrint('Error restoring active journey: $e');
+      return null;
+    }
+  }
+
   Future<void> startJourney({
     required DestinationPlace destinationPlace,
     double alarmThresholdMeters = 1000.0,
     bool isVibrationEnabled = true,
   }) async {
+    debugPrint('[JourneyService] startJourney() invoked for destination: ${destinationPlace.name} (${destinationPlace.latitude}, ${destinationPlace.longitude})');
     final current = activeJourneyNotifier.value;
     if (current != null &&
-        current.destinationPlace.name == destinationPlace.name &&
-        current.destinationPlace.latitude == destinationPlace.latitude &&
-        current.destinationPlace.longitude == destinationPlace.longitude) {
+        (current.destinationPlace.latitude - destinationPlace.latitude).abs() < 0.0001 &&
+        (current.destinationPlace.longitude - destinationPlace.longitude).abs() < 0.0001) {
+      debugPrint('[JourneyService] Journey already active for ${destinationPlace.name}. Skipping duplicate start.');
       return;
     }
 
-    await stopJourney();
+    if (current != null) {
+      debugPrint('[JourneyService] Stopping existing journey before starting new one.');
+      await stopJourney(explicitStatus: 'Replaced');
+    }
 
     final state = ActiveJourneyState(
       destinationPlace: destinationPlace,
@@ -77,12 +136,27 @@ class JourneyService {
     _hasTriggeredAlarm = false;
     activeJourneyNotifier.value = state;
 
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(keyActiveJourneyState, jsonEncode(state.toJson()));
+      debugPrint('[JourneyService] Saved active journey state to local storage for: ${destinationPlace.name}');
+    } catch (e) {
+      debugPrint('Error persisting active journey state: $e');
+    }
+
     await _initPositionStream(state);
   }
 
   Future<void> stopJourney({String? explicitStatus}) async {
+    final callerTrace = StackTrace.current;
     final state = activeJourneyNotifier.value;
-    if (state != null) {
+    debugPrint('[JourneyService] stopJourney() invoked. ExplicitStatus: $explicitStatus, ActiveState: ${state?.destinationPlace.name}\nCaller StackTrace:\n$callerTrace');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
+    final raw = prefs.getString(keyActiveJourneyState);
+    debugPrint('[JourneyService] Persisted state confirmed absent: ${raw == null || raw.isEmpty}');
+
+    if (state != null && raw != null && raw.isNotEmpty) {
       final endTime = DateTime.now();
       final durationSeconds = endTime.difference(state.startTime).inSeconds;
       final status = explicitStatus ?? (_hasTriggeredAlarm ? 'Completed' : 'Cancelled');
@@ -109,13 +183,26 @@ class JourneyService {
       unawaited(JourneyHistoryService.instance.addRecord(record));
     }
 
+    debugPrint('[JourneyService] Cancelling position subscription and clearing active journey state.');
+    ForegroundTaskService.detachTaskDataCallback(_onReceiveTaskData);
     await _positionSubscription?.cancel();
     _positionSubscription = null;
     _hasTriggeredAlarm = false;
     activeJourneyNotifier.value = null;
     currentPositionNotifier.value = null;
     routeResultNotifier.value = null;
+    debugPrint('[JourneyService] In-memory state cleared. All journeyNotifiers reset to null.');
+
     try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      await prefs.remove(keyActiveJourneyState);
+      debugPrint('[JourneyService] Cleared saved active journey state from local storage.');
+    } catch (e) {
+      debugPrint('Error clearing active journey state: $e');
+    }
+    try {
+      await ForegroundTaskService.stopService();
       final alarm = alarmService ?? AlarmService.instance;
       await alarm.stopAlarm();
     } catch (e) {
@@ -126,25 +213,49 @@ class JourneyService {
   Future<void> _initPositionStream(ActiveJourneyState state) async {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      debugPrint('[JourneyService] _initPositionStream - locationServiceEnabled: $serviceEnabled');
       if (!serviceEnabled) return;
 
       final isBgTracking = await SettingsService.instance.isBackgroundTracking();
+      debugPrint('[JourneyService] _initPositionStream - isBackgroundTracking setting: $isBgTracking');
 
       final permission = await LocationService.checkAndRequestPermission(
         isBackground: isBgTracking,
       );
+      debugPrint('[JourneyService] _initPositionStream - permission: $permission');
       if (permission != LocationPermissionState.granted) return;
 
       final isHighGps = await SettingsService.instance.isHighAccuracyGps();
-
-      if (isBgTracking) {
-        await LocationService.requestNotificationPermission();
-      }
+      debugPrint('[JourneyService] _initPositionStream - isHighAccuracyGps: $isHighGps');
 
       final initialPos = await LocationService.getCurrentPosition();
+      debugPrint('[JourneyService] Initial position fetched: ${initialPos?.latitude}, ${initialPos?.longitude}, accuracy: ${initialPos?.accuracy}');
       if (initialPos != null) {
         _onLocationUpdated(initialPos, state);
       }
+
+      if (defaultTargetPlatform == TargetPlatform.android && isBgTracking) {
+        debugPrint('[JourneyService] Requesting notification permission and starting ForegroundTaskService...');
+        await LocationService.requestNotificationPermission();
+        final dist = initialPos != null
+            ? Geolocator.distanceBetween(
+                initialPos.latitude,
+                initialPos.longitude,
+                state.destinationPlace.latitude,
+                state.destinationPlace.longitude,
+              )
+            : null;
+        await ForegroundTaskService.startService(
+          destination: state.destinationPlace,
+          initialDistanceMeters: dist,
+        );
+
+        ForegroundTaskService.attachTaskDataCallback(_onReceiveTaskData);
+        debugPrint('[JourneyService] Dedicated background TaskHandler owns position stream. Main UI attached to task data callback.');
+        return;
+      }
+
+      debugPrint('[JourneyService] Initializing Geolocator position stream...');
 
       _positionSubscription = LocationService.getPositionStream(
         accuracy: isHighGps ? LocationAccuracy.high : LocationAccuracy.medium,
@@ -155,9 +266,10 @@ class JourneyService {
           _onLocationUpdated(position, state);
         },
         onError: (error) {
-          debugPrint('JourneyService position stream error: $error');
+          debugPrint('[JourneyService] position stream error: $error');
         },
       );
+      debugPrint('[JourneyService] Position stream subscription created successfully.');
     } catch (e) {
       debugPrint('Error starting JourneyService position stream: $e');
     }
@@ -185,7 +297,10 @@ class JourneyService {
       return;
     }
 
-    if (!_hasTriggeredAlarm && directDistanceMeters <= state.alarmThresholdMeters) {
+    if (!_hasTriggeredAlarm &&
+        (position.accuracy <= 0 || position.accuracy <= 200.0) &&
+        directDistanceMeters <= state.alarmThresholdMeters) {
+      debugPrint('[JourneyService] ALARM TRIGGERED! Distance: ${directDistanceMeters.toStringAsFixed(1)}m, Threshold: ${state.alarmThresholdMeters}m, Accuracy: ${position.accuracy}m');
       _hasTriggeredAlarm = true;
       await AlarmService.instance.startAlarm(
         isVibrationEnabled: state.isVibrationEnabled,
@@ -208,9 +323,54 @@ class JourneyService {
       );
       if (activeJourneyNotifier.value == state) {
         routeResultNotifier.value = route;
+        final notifTitle = JourneyNotificationService.buildTitle(dest);
+        final notifText = JourneyNotificationService.buildContent(
+          distanceMeters: directDistanceMeters,
+          durationSeconds: route.durationSeconds,
+          isNearDestination: directDistanceMeters <= state.alarmThresholdMeters,
+        );
+        unawaited(ForegroundTaskService.updateNotification(
+          title: notifTitle,
+          text: notifText,
+        ));
       }
     } catch (e) {
       debugPrint('JourneyService live route update error: $e');
+    }
+  }
+
+  void _onReceiveTaskData(Object data) {
+    if (data is! Map) return;
+
+    final state = activeJourneyNotifier.value;
+    if (state == null) return;
+
+    final type = data['type'] as String?;
+    if (type == 'location_update') {
+      final lat = (data['latitude'] as num).toDouble();
+      final lng = (data['longitude'] as num).toDouble();
+      final accuracy = (data['accuracy'] as num).toDouble();
+      final pos = Position(
+        latitude: lat,
+        longitude: lng,
+        timestamp: DateTime.now(),
+        accuracy: accuracy,
+        altitude: 0.0,
+        altitudeAccuracy: 0.0,
+        heading: 0.0,
+        headingAccuracy: 0.0,
+        speed: 0.0,
+        speedAccuracy: 0.0,
+      );
+      _onLocationUpdated(pos, state);
+    } else if (type == 'alarm_triggered') {
+      if (!_hasTriggeredAlarm) {
+        _hasTriggeredAlarm = true;
+        navigatorKey.currentState?.pushNamed(
+          AppRouter.alarmRinging,
+          arguments: state.destinationPlace,
+        );
+      }
     }
   }
 }

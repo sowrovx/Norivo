@@ -102,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: QuickActionCard(
                       icon: Icons.bookmark_outline_rounded,
                       label: 'Saved\nPlaces',
-                      onTap: () => _onQuickActionTap('Saved Places'),
+                      onTap: () => Navigator.of(context).pushNamed(AppRouter.savedPlaces),
                     ),
                   ),
                   const SizedBox(width: 12),

@@ -80,5 +80,48 @@ void main() {
       records = await service.getHistoryRecords();
       expect(records.isEmpty, true);
     });
+
+    test('deleteRecord removes a specific record by id', () async {
+      final service = JourneyHistoryService();
+
+      final record1 = JourneyHistoryRecord(
+        id: 'rec_100',
+        destinationName: 'Penang Hill',
+        destinationLatitude: 5.4084,
+        destinationLongitude: 100.2772,
+        startTime: DateTime.now(),
+        endTime: DateTime.now(),
+        totalDurationSeconds: 600,
+        totalDistanceMeters: 3000.0,
+        alarmThresholdMeters: 500.0,
+        travelMode: 'Drive',
+        status: 'Completed',
+      );
+
+      final record2 = JourneyHistoryRecord(
+        id: 'rec_200',
+        destinationName: 'Batu Caves',
+        destinationLatitude: 3.2379,
+        destinationLongitude: 101.6840,
+        startTime: DateTime.now(),
+        endTime: DateTime.now(),
+        totalDurationSeconds: 1200,
+        totalDistanceMeters: 8000.0,
+        alarmThresholdMeters: 1000.0,
+        travelMode: 'Drive',
+        status: 'Completed',
+      );
+
+      await service.addRecord(record1);
+      await service.addRecord(record2);
+
+      var records = await service.getHistoryRecords();
+      expect(records.length, 2);
+
+      await service.deleteRecord('rec_100');
+      records = await service.getHistoryRecords();
+      expect(records.length, 1);
+      expect(records.first.id, 'rec_200');
+    });
   });
 }

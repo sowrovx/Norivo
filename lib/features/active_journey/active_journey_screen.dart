@@ -48,12 +48,8 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   void initState() {
     super.initState();
     _routeService = widget.routeService ?? RouteService();
-    final currentJourney = JourneyService.instance.currentJourney;
-    if (widget.destinationPlace != null &&
-        (currentJourney == null ||
-            currentJourney.destinationPlace.latitude != widget.destinationPlace!.latitude ||
-            currentJourney.destinationPlace.longitude != widget.destinationPlace!.longitude ||
-            currentJourney.destinationPlace.name != widget.destinationPlace!.name)) {
+    final hasActive = JourneyService.instance.hasActiveJourney;
+    if (!hasActive && widget.destinationPlace != null) {
       JourneyService.instance.startJourney(
         destinationPlace: widget.destinationPlace!,
         alarmThresholdMeters: widget.alarmThresholdMeters,

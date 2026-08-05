@@ -17,6 +17,10 @@
             android:name="com.baseflow.geolocator.stopService.StopPendingIntentService"
             android:exported="false"
             android:foregroundServiceType="location" />
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

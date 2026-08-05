@@ -101,5 +101,35 @@ void main() {
       expect(service.currentPositionNotifier.value, null);
       expect(service.routeResultNotifier.value, null);
     });
+
+    test('restoreActiveJourney restores persisted journey after app reopening', () async {
+      final service1 = JourneyService(alarmService: MockAlarmService());
+
+      const place = DestinationPlace(
+        name: 'Penang International Airport',
+        address: 'Bayan Lepas, Penang',
+        latitude: 5.2971,
+        longitude: 100.2769,
+      );
+
+      await service1.startJourney(
+        destinationPlace: place,
+        alarmThresholdMeters: 2000.0,
+        isVibrationEnabled: false,
+      );
+
+      final service2 = JourneyService(alarmService: MockAlarmService());
+      expect(service2.hasActiveJourney, false);
+
+      final restored = await service2.restoreActiveJourney();
+      expect(restored, isNotNull);
+      expect(restored?.destinationPlace.name, 'Penang International Airport');
+      expect(restored?.alarmThresholdMeters, 2000.0);
+      expect(restored?.isVibrationEnabled, false);
+      expect(service2.hasActiveJourney, true);
+
+      await service2.stopJourney();
+      expect(service2.hasActiveJourney, false);
+    });
   });
 }

@@ -7,6 +7,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../core/router/app_router.dart';
+import '../../core/services/journey_service.dart';
 import '../../core/theme/app_text_styles.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -27,7 +28,7 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
-    _navigateToHome();
+    _navigateToNextScreen();
   }
 
   @override
@@ -36,10 +37,28 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  Future<void> _navigateToHome() async {
+  Future<void> _navigateToNextScreen() async {
+    debugPrint('[SplashScreen] App launched. Reloading SharedPreferences and checking active journey...');
+    final restoredState = await JourneyService.instance.restoreActiveJourney();
     await Future<void>.delayed(const Duration(seconds: 2));
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed(AppRouter.home);
+
+    final state = JourneyService.instance.currentJourney ?? restoredState;
+
+    if (state != null) {
+      debugPrint('[SplashScreen] Active journey found (${state.destinationPlace.name}). Navigating directly to ActiveJourneyScreen.');
+      Navigator.of(context).pushReplacementNamed(
+        AppRouter.activeJourney,
+        arguments: {
+          'destinationPlace': state.destinationPlace,
+          'alarmThresholdMeters': state.alarmThresholdMeters,
+          'isVibrationEnabled': state.isVibrationEnabled,
+        },
+      );
+    } else {
+      debugPrint('[SplashScreen] No active journey found. Navigating to HomeScreen.');
+      Navigator.of(context).pushReplacementNamed(AppRouter.home);
+    }
   }
 
   @override

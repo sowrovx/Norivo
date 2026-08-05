@@ -57,6 +57,19 @@ class JourneyHistoryService {
     }
   }
 
+  Future<void> deleteRecord(String id) async {
+    try {
+      final records = await getHistoryRecords();
+      final updatedList = records.where((r) => r.id != id).toList();
+      final prefs = await _getPrefs();
+      final rawList = updatedList.map((r) => r.encode()).toList();
+      await prefs.setStringList(keyHistoryRecords, rawList);
+      historyNotifier.value = List.unmodifiable(updatedList);
+    } catch (e) {
+      debugPrint('Error deleting journey history record: $e');
+    }
+  }
+
   Future<void> clearHistory() async {
     try {
       final prefs = await _getPrefs();

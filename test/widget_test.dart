@@ -3,7 +3,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:norivo/app/app.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('shows the Norivo splash screen and navigates to HomeScreen', (
     WidgetTester tester,
   ) async {

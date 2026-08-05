@@ -71,8 +71,10 @@ class LocationService {
   static Future<void> requestNotificationPermission() async {
     if (defaultTargetPlatform == TargetPlatform.android) {
       final status = await Permission.notification.status;
+      debugPrint('[LocationService] POST_NOTIFICATIONS status: $status');
       if (!status.isGranted) {
-        await Permission.notification.request();
+        final result = await Permission.notification.request();
+        debugPrint('[LocationService] POST_NOTIFICATIONS request result: $result');
       }
     }
   }
@@ -85,21 +87,17 @@ class LocationService {
     late final LocationSettings locationSettings;
 
     if (isBackgroundTracking && defaultTargetPlatform == TargetPlatform.android) {
+      debugPrint('[LocationService] getPositionStream: Configuring AndroidSettings for location stream.');
       locationSettings = AndroidSettings(
         accuracy: accuracy,
         distanceFilter: 0,
         forceLocationManager: false,
         intervalDuration: const Duration(seconds: 3),
-        foregroundNotificationConfig: const ForegroundNotificationConfig(
-          notificationTitle: 'Norivo Journey Active',
-          notificationText: 'Tracking location in background to wake you up before arrival.',
-          notificationIcon: AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
-          enableWakeLock: true,
-        ),
       );
     } else if (isBackgroundTracking &&
         (defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS)) {
+      debugPrint('[LocationService] getPositionStream: Configuring AppleSettings with background location indicator.');
       locationSettings = AppleSettings(
         accuracy: accuracy,
         activityType: ActivityType.fitness,
@@ -109,6 +107,7 @@ class LocationService {
         allowBackgroundLocationUpdates: true,
       );
     } else {
+      debugPrint('[LocationService] getPositionStream: Configuring standard LocationSettings.');
       locationSettings = LocationSettings(
         accuracy: accuracy,
         distanceFilter: distanceFilter,

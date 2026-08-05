@@ -13,6 +13,7 @@ import '../../features/destination_search/destination_search_screen.dart';
 import '../../features/history/history_screen.dart';
 import '../../features/history/journey_summary_screen.dart';
 import '../../features/home/home_screen.dart';
+import '../../features/saved_places/saved_places_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/splash/splash_screen.dart';
 
@@ -28,6 +29,7 @@ class AppRouter {
   static const String settings = '/settings';
   static const String history = '/history';
   static const String journeySummary = '/journey-summary';
+  static const String savedPlaces = '/saved-places';
 
   static Route<dynamic> onGenerateRoute(RouteSettings routeSettings) {
     switch (routeSettings.name) {
@@ -76,6 +78,10 @@ class AppRouter {
         );
       case history:
         return MaterialPageRoute<void>(builder: (_) => const HistoryScreen());
+      case savedPlaces:
+        return MaterialPageRoute<void>(
+          builder: (_) => const SavedPlacesScreen(),
+        );
       case journeySummary:
         final record = routeSettings.arguments;
         if (record is JourneyHistoryRecord) {

@@ -131,5 +131,24 @@ void main() {
       await service2.stopJourney();
       expect(service2.hasActiveJourney, false);
     });
+
+    test('stopJourney with explicitStatus Completed and Cancelled saves correct status', () async {
+      final service = JourneyService(alarmService: MockAlarmService());
+
+      const place = DestinationPlace(
+        name: 'Butterworth Station',
+        address: 'Penang',
+        latitude: 5.3992,
+        longitude: 100.3638,
+      );
+
+      await service.startJourney(destinationPlace: place);
+      await service.stopJourney(explicitStatus: 'Completed');
+      expect(service.hasActiveJourney, false);
+
+      await service.startJourney(destinationPlace: place);
+      await service.stopJourney(explicitStatus: 'Cancelled');
+      expect(service.hasActiveJourney, false);
+    });
   });
 }

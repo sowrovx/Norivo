@@ -42,6 +42,7 @@ class ActiveJourneyScreen extends StatefulWidget {
 class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   Position? _currentPosition;
   RouteResult? _routeResult;
+  double? _cachedRemainingDistanceMeters;
   late final RouteService _routeService;
 
   @override
@@ -59,6 +60,7 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
 
     _currentPosition = JourneyService.instance.currentPositionNotifier.value;
     _routeResult = JourneyService.instance.routeResultNotifier.value;
+    _recalculateRemainingDistance();
 
     JourneyService.instance.currentPositionNotifier.addListener(_onPositionChanged);
     JourneyService.instance.routeResultNotifier.addListener(_onRouteChanged);
@@ -68,92 +70,11 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
     }
   }
 
-  void _onPositionChanged() {
-    if (!mounted) return;
-    setState(() {
-      _currentPosition = JourneyService.instance.currentPositionNotifier.value;
-    });
-  }
-
-  void _onRouteChanged() {
-    if (!mounted) return;
-    setState(() {
-      _routeResult = JourneyService.instance.routeResultNotifier.value;
-    });
-  }
-
-  @override
-  void dispose() {
-    JourneyService.instance.currentPositionNotifier.removeListener(_onPositionChanged);
-    JourneyService.instance.routeResultNotifier.removeListener(_onRouteChanged);
-    super.dispose();
-  }
-
-  DestinationPlace? get _effectiveDestinationPlace =>
-      widget.destinationPlace ?? JourneyService.instance.currentJourney?.destinationPlace;
-
-  Future<void> _loadLocationAndRoute() async {
-    try {
-      final pos = await LocationService.getCurrentPosition();
-      if (!mounted) return;
-      if (pos != null) {
-        _currentPosition = pos;
-        final target = _effectiveDestinationPlace;
-        if (target != null) {
-          final route = await _routeService.calculateRoute(
-            startLatitude: pos.latitude,
-            startLongitude: pos.longitude,
-            destinationLatitude: target.latitude,
-            destinationLongitude: target.longitude,
-          );
-          if (!mounted) return;
-          setState(() {
-            _routeResult = route;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Location load error in ActiveJourneyScreen: $e');
-    }
-  }
-
-  void _onNavTap(int index) {
-    if (index == 0) {
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRouter.home,
-        (route) => false,
-      );
-    } else if (index == 2) {
-      Navigator.of(context).pushNamed(AppRouter.history);
-    } else if (index == 3) {
-      Navigator.of(context).pushNamed(AppRouter.settings);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tab under development'),
-          duration: Duration(seconds: 1),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  Future<void> _endJourney() async {
-    FocusScope.of(context).unfocus();
-
-    await JourneyService.instance.stopJourney();
-
-    if (!mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      AppRouter.home,
-      (route) => false,
-    );
-  }
-
-  double? get _distanceMeters {
+  void _recalculateRemainingDistance() {
     final target = _effectiveDestinationPlace;
     if (_currentPosition == null || target == null) {
-      return null;
+      _cachedRemainingDistanceMeters = null;
+      return;
     }
 
     final pos = _currentPosition!;
@@ -185,30 +106,136 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
           polyline[i + 1].longitude,
         );
       }
-      return remainingMeters;
+      _cachedRemainingDistanceMeters = remainingMeters;
+      debugPrint('[ActiveJourneyScreen] Calculated remaining distance: ${remainingMeters.toStringAsFixed(1)}m (cached)');
+      return;
     }
 
-    return Geolocator.distanceBetween(
+    final dist = Geolocator.distanceBetween(
       pos.latitude,
       pos.longitude,
       target.latitude,
       target.longitude,
     );
+    _cachedRemainingDistanceMeters = dist;
+    debugPrint('[ActiveJourneyScreen] Calculated remaining distance: ${dist.toStringAsFixed(1)}m (cached)');
+  }
+
+  void _onPositionChanged() {
+    if (!mounted) return;
+    _currentPosition = JourneyService.instance.currentPositionNotifier.value;
+    _recalculateRemainingDistance();
+    setState(() {});
+  }
+
+  void _onRouteChanged() {
+    if (!mounted) return;
+    _routeResult = JourneyService.instance.routeResultNotifier.value;
+    _recalculateRemainingDistance();
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    JourneyService.instance.currentPositionNotifier.removeListener(_onPositionChanged);
+    JourneyService.instance.routeResultNotifier.removeListener(_onRouteChanged);
+    super.dispose();
+  }
+
+  DestinationPlace? get _effectiveDestinationPlace =>
+      widget.destinationPlace ?? JourneyService.instance.currentJourney?.destinationPlace;
+
+  Future<void> _loadLocationAndRoute() async {
+    if (JourneyService.instance.hasActiveJourney) {
+      debugPrint('[ActiveJourneyScreen] JourneyService owns active route calculation. Skipping duplicate route request in ActiveJourneyScreen.');
+      return;
+    }
+    try {
+      final pos = await LocationService.getCurrentPosition();
+      if (!mounted) return;
+      if (pos != null) {
+        _currentPosition = pos;
+        final target = _effectiveDestinationPlace;
+        if (target != null && _routeResult == null) {
+          final route = await _routeService.calculateRoute(
+            startLatitude: pos.latitude,
+            startLongitude: pos.longitude,
+            destinationLatitude: target.latitude,
+            destinationLongitude: target.longitude,
+          );
+          if (!mounted) return;
+          _routeResult = route;
+          _recalculateRemainingDistance();
+          setState(() {});
+        } else {
+          _recalculateRemainingDistance();
+          setState(() {});
+        }
+      }
+    } catch (e) {
+      debugPrint('Location load error in ActiveJourneyScreen: $e');
+    }
+  }
+
+  void _onNavTap(int index) {
+    if (index == 0) {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRouter.home,
+        (route) => false,
+      );
+    } else if (index == 2) {
+      Navigator.of(context).pushNamed(AppRouter.history);
+    } else if (index == 3) {
+      Navigator.of(context).pushNamed(AppRouter.settings);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tab under development'),
+          duration: Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  bool _isEndingJourney = false;
+
+  Future<void> _endJourney() async {
+    if (_isEndingJourney) return;
+    _isEndingJourney = true;
+
+    FocusScope.of(context).unfocus();
+    debugPrint(
+      '[ActiveJourneyScreen] User manually ended journey before arrival. Passing explicitStatus "Cancelled".',
+    );
+    final record = await JourneyService.instance.stopJourney(
+      explicitStatus: 'Cancelled',
+    );
+
+    if (!mounted) return;
+    final routeName = record != null && record.status.toLowerCase() == 'completed'
+        ? AppRouter.journeySummary
+        : AppRouter.cancelledJourneySummary;
+
+    Navigator.of(context).pushReplacementNamed(
+      routeName,
+      arguments: record,
+    );
   }
 
   String get _remainingDistanceText {
-    if (_distanceMeters == null) return '--';
-    return DestinationSearchService.formatDistance(_distanceMeters!);
+    if (_cachedRemainingDistanceMeters == null) return '--';
+    return DestinationSearchService.formatDistance(_cachedRemainingDistanceMeters!);
   }
 
   String get _remainingTimeText {
-    if (_distanceMeters == null) return '--';
+    if (_cachedRemainingDistanceMeters == null) return '--';
     final speed = (_routeResult != null &&
             _routeResult!.distanceMeters > 0 &&
             _routeResult!.durationSeconds > 0)
         ? (_routeResult!.distanceMeters / _routeResult!.durationSeconds)
         : (50000 / 3600);
-    final remainingSeconds = _distanceMeters! / speed;
+    final remainingSeconds = _cachedRemainingDistanceMeters! / speed;
     final totalMins = (remainingSeconds / 60).round();
     if (totalMins < 1) return '< 1 min';
     if (totalMins < 60) return '$totalMins mins';
@@ -218,13 +245,13 @@ class _ActiveJourneyScreenState extends State<ActiveJourneyScreen> {
   }
 
   String get _etaText {
-    if (_distanceMeters == null) return '--';
+    if (_cachedRemainingDistanceMeters == null) return '--';
     final speed = (_routeResult != null &&
             _routeResult!.distanceMeters > 0 &&
             _routeResult!.durationSeconds > 0)
         ? (_routeResult!.distanceMeters / _routeResult!.durationSeconds)
         : (50000 / 3600);
-    final remainingSeconds = _distanceMeters! / speed;
+    final remainingSeconds = _cachedRemainingDistanceMeters! / speed;
     final arrivalTime = DateTime.now().add(Duration(seconds: remainingSeconds.round()));
     final hour = arrivalTime.hour % 12 == 0 ? 12 : arrivalTime.hour % 12;
     final minute = arrivalTime.minute.toString().padLeft(2, '0');

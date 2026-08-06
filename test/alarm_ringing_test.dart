@@ -7,7 +7,7 @@ import 'package:norivo/features/alarm_ringing/alarm_ringing_screen.dart';
 void main() {
   testWidgets('shows arrival and alarm actions with fallback destination', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: AlarmRingingScreen()));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('You have arrived'), findsOneWidget);
     expect(find.text('Selected Destination'), findsOneWidget);
@@ -26,7 +26,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(home: AlarmRingingScreen(destinationPlace: place)),
     );
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('You have arrived'), findsOneWidget);
     expect(find.text('Central Station'), findsOneWidget);

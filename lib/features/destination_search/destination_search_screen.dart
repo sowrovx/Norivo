@@ -10,6 +10,7 @@ import '../../core/models/destination_place.dart';
 import '../../core/models/saved_place.dart';
 import '../../core/router/app_router.dart';
 import '../../core/services/destination_search_service.dart';
+import '../../core/services/journey_service.dart';
 import '../../core/services/location_service.dart';
 import '../../core/services/saved_places_service.dart';
 import '../../core/theme/app_colors.dart';
@@ -37,52 +38,41 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
   ];
 
   Timer? _debounceTimer;
-  StreamSubscription<Position>? _positionSubscription;
   DestinationPlace? _selectedPlace;
   List<DestinationPlace> _searchResults = const [];
   bool _isLoading = false;
   String? _errorMessage;
   Position? _currentPosition;
+  String? _lastSearchedQuery;
+  int _requestSequence = 0;
+  bool _isRequestInProgress = false;
+  final Map<String, List<DestinationPlace>> _queryCache = {};
 
   @override
   void initState() {
     super.initState();
-    _refreshCurrentLocation();
-    _initPositionSubscription();
+    _currentPosition = LocationService.currentPositionNotifier.value ??
+        JourneyService.instance.currentPositionNotifier.value;
+    if (_currentPosition == null) {
+      _refreshCurrentLocation();
+    }
+    LocationService.currentPositionNotifier.addListener(_onSharedLocationUpdated);
     SavedPlacesService.instance.getSavedPlaces();
   }
 
-  Future<void> _initPositionSubscription() async {
-    try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
-      final permission = await LocationService.checkAndRequestPermission();
-      if (permission != LocationPermissionState.granted) return;
-
-      _positionSubscription = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
-      ).listen(
-        (position) {
-          if (!mounted) return;
-          setState(() {
-            _currentPosition = position;
-          });
-        },
-        onError: (error) {
-          debugPrint('Location stream error: $error');
-        },
-      );
-    } catch (error) {
-      debugPrint('Error initializing position stream: $error');
-    }
+  void _onSharedLocationUpdated() {
+    final pos = LocationService.currentPositionNotifier.value ??
+        JourneyService.instance.currentPositionNotifier.value;
+    if (!mounted || pos == null) return;
+    setState(() {
+      _currentPosition = pos;
+    });
   }
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
-    _positionSubscription?.cancel();
+    LocationService.currentPositionNotifier.removeListener(_onSharedLocationUpdated);
     _searchController.dispose();
     super.dispose();
   }
@@ -121,17 +111,52 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
   }
 
   void _searchDestinations(String query) {
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 450), () async {
-      if (!mounted) {
-        return;
+    final normalizedQuery = query.trim().toLowerCase();
+
+    if (normalizedQuery.isEmpty) {
+      _debounceTimer?.cancel();
+      if (_isRequestInProgress) {
+        debugPrint('[DestinationSearch] Cancelled in-progress request for previous query.');
+        _isRequestInProgress = false;
+      }
+      _requestSequence++;
+      _lastSearchedQuery = null;
+      setState(() {
+        _searchResults = const [];
+        _isLoading = false;
+        _errorMessage = null;
+      });
+      return;
+    }
+
+    if (normalizedQuery == _lastSearchedQuery) {
+      debugPrint('[DestinationSearch] Skipping duplicate query: "$normalizedQuery"');
+      return;
+    }
+
+    if (_debounceTimer?.isActive ?? false) {
+      _debounceTimer?.cancel();
+    }
+    debugPrint('[DestinationSearch] Debouncing search for query: "$query"...');
+
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () async {
+      if (!mounted) return;
+
+      if (_isRequestInProgress) {
+        debugPrint('[DestinationSearch] Cancelled in-progress request for previous query.');
       }
 
-      if (query.trim().isEmpty) {
+      final currentRequestId = ++_requestSequence;
+      _isRequestInProgress = true;
+      _lastSearchedQuery = normalizedQuery;
+
+      if (_queryCache.containsKey(normalizedQuery)) {
+        debugPrint('[DestinationSearch] Returning cached search results for: "$normalizedQuery"');
+        _isRequestInProgress = false;
         setState(() {
-          _searchResults = const [];
+          _searchResults = _queryCache[normalizedQuery]!;
           _isLoading = false;
-          _errorMessage = null;
+          _errorMessage = _queryCache[normalizedQuery]!.isEmpty ? 'No matching places found.' : null;
         });
         return;
       }
@@ -141,29 +166,34 @@ class _DestinationSearchScreenState extends State<DestinationSearchScreen> {
         _errorMessage = null;
       });
 
+      debugPrint('[DestinationSearch] Sending HTTP request to Nominatim for: "$normalizedQuery"');
+
       try {
         final results = await _searchService.search(query);
-        if (!mounted) {
+        if (!mounted || currentRequestId != _requestSequence) {
+          debugPrint('[DestinationSearch] Cancelled in-progress request for previous query.');
           return;
         }
+
+        _queryCache[normalizedQuery] = results;
+        _isRequestInProgress = false;
+
         setState(() {
           _searchResults = results;
           _isLoading = false;
           _errorMessage = results.isEmpty ? 'No matching places found.' : null;
         });
       } on DestinationSearchException catch (error) {
-        if (!mounted) {
-          return;
-        }
+        if (!mounted || currentRequestId != _requestSequence) return;
+        _isRequestInProgress = false;
         setState(() {
           _searchResults = const [];
           _isLoading = false;
           _errorMessage = error.message;
         });
       } catch (error) {
-        if (!mounted) {
-          return;
-        }
+        if (!mounted || currentRequestId != _requestSequence) return;
+        _isRequestInProgress = false;
         setState(() {
           _searchResults = const [];
           _isLoading = false;

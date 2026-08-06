@@ -25,65 +25,54 @@ class AlarmService {
     _isPlaying = true;
 
     try {
-      debugPrint('[AlarmService] Configuring AudioContext for alarm playback...');
-      final audioContext = AudioContext(
-        iOS: AudioContextIOS(
-          category: AVAudioSessionCategory.playback,
-          options: {
-            AVAudioSessionOptions.mixWithOthers,
-            AVAudioSessionOptions.duckOthers,
-          },
-        ),
-        android: const AudioContextAndroid(
-          isSpeakerphoneOn: true,
-          stayAwake: true,
-          contentType: AndroidContentType.sonification,
-          usageType: AndroidUsageType.alarm,
-          audioFocus: AndroidAudioFocus.gain,
-        ),
-      );
+      if (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS) {
+        final audioContext = AudioContext(
+          iOS: AudioContextIOS(
+            category: AVAudioSessionCategory.playback,
+            options: {
+              AVAudioSessionOptions.mixWithOthers,
+              AVAudioSessionOptions.duckOthers,
+            },
+          ),
+          android: const AudioContextAndroid(
+            isSpeakerphoneOn: true,
+            stayAwake: true,
+            contentType: AndroidContentType.sonification,
+            usageType: AndroidUsageType.alarm,
+            audioFocus: AndroidAudioFocus.gain,
+          ),
+        );
 
-      await AudioPlayer.global.setAudioContext(audioContext);
-      await _player.setAudioContext(audioContext);
+        await AudioPlayer.global.setAudioContext(audioContext);
+        await _player.setAudioContext(audioContext);
+      }
 
       await _player.setReleaseMode(ReleaseMode.loop);
       final volume = await SettingsService.instance.getAlarmVolume();
       await _player.setVolume(volume);
-      debugPrint('[AlarmService] Attempting to play AssetSource("sounds/alarm.wav") at volume=$volume...');
       await _player.play(AssetSource('sounds/alarm.wav'));
-      debugPrint('[AlarmService] AudioPlayer.play successfully initiated.');
-    } catch (e, stackTrace) {
-      debugPrint('[AlarmService] AudioPlayer error using AssetSource: $e');
-      debugPrint('[AlarmService] Stack trace: $stackTrace');
+    } catch (e) {
       try {
-        debugPrint('[AlarmService] Fallback: Playing UrlSource...');
         await _player.play(
           UrlSource(
             'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg',
           ),
         );
-      } catch (fallbackErr) {
-        debugPrint('[AlarmService] Fallback UrlSource play error: $fallbackErr');
-      }
+      } catch (_) {}
     }
 
     try {
       final shouldVibrate = isVibrationEnabled ?? await SettingsService.instance.isVibrationEnabled();
-      if (!shouldVibrate) {
-        debugPrint('[AlarmService] Vibration is disabled for this journey. Skipping vibration.');
-      } else {
-        debugPrint('[AlarmService] Initiating vibration pattern...');
+      if (shouldVibrate && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
         final hasVibrator = await Vibration.hasVibrator();
         if (hasVibrator == true) {
           Vibration.vibrate(pattern: [500, 500, 500, 500], repeat: 0);
-          debugPrint('[AlarmService] Vibration pattern started.');
         } else {
           _vibrationTimer?.cancel();
           _vibrationTimer = Timer.periodic(
             const Duration(milliseconds: 1000),
             (_) => HapticFeedback.vibrate(),
           );
-          debugPrint('[AlarmService] HapticFeedback vibration timer started.');
         }
       }
     } catch (e) {

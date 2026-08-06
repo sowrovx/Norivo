@@ -29,6 +29,43 @@ class JourneyHistoryRecord {
   final String travelMode;
   final String status;
 
+  static String generateUniqueId() {
+    final now = DateTime.now();
+    final mic = now.microsecondsSinceEpoch;
+    final rand = (mic % 899999) + 100000;
+    return 'journey_${mic}_$rand';
+  }
+
+  JourneyHistoryRecord copyWith({
+    String? id,
+    String? destinationName,
+    String? destinationAddress,
+    double? destinationLatitude,
+    double? destinationLongitude,
+    DateTime? startTime,
+    DateTime? endTime,
+    int? totalDurationSeconds,
+    double? totalDistanceMeters,
+    double? alarmThresholdMeters,
+    String? travelMode,
+    String? status,
+  }) {
+    return JourneyHistoryRecord(
+      id: id ?? this.id,
+      destinationName: destinationName ?? this.destinationName,
+      destinationAddress: destinationAddress ?? this.destinationAddress,
+      destinationLatitude: destinationLatitude ?? this.destinationLatitude,
+      destinationLongitude: destinationLongitude ?? this.destinationLongitude,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      totalDurationSeconds: totalDurationSeconds ?? this.totalDurationSeconds,
+      totalDistanceMeters: totalDistanceMeters ?? this.totalDistanceMeters,
+      alarmThresholdMeters: alarmThresholdMeters ?? this.alarmThresholdMeters,
+      travelMode: travelMode ?? this.travelMode,
+      status: status ?? this.status,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'destinationName': destinationName,
@@ -45,6 +82,8 @@ class JourneyHistoryRecord {
       };
 
   factory JourneyHistoryRecord.fromJson(Map<String, dynamic> json) {
+    final rawStatus = json['status'] as String? ?? 'Completed';
+    final status = rawStatus.toLowerCase() == 'cancelled' ? 'Cancelled' : 'Completed';
     return JourneyHistoryRecord(
       id: json['id'] as String? ?? '',
       destinationName: json['destinationName'] as String? ?? 'Unknown Destination',
@@ -61,7 +100,7 @@ class JourneyHistoryRecord {
       totalDistanceMeters: (json['totalDistanceMeters'] as num?)?.toDouble() ?? 0.0,
       alarmThresholdMeters: (json['alarmThresholdMeters'] as num?)?.toDouble() ?? 1000.0,
       travelMode: json['travelMode'] as String? ?? 'Drive',
-      status: json['status'] as String? ?? 'Completed',
+      status: status,
     );
   }
 

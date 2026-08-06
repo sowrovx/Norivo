@@ -42,20 +42,23 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
   @override
   void initState() {
     super.initState();
+    final sharedPos = LocationService.currentPositionNotifier.value ??
+        JourneyService.instance.currentPositionNotifier.value;
     if (widget.currentPosition != null) {
       _center = widget.currentPosition;
       _isLoading = false;
-    } else if (JourneyService.instance.currentPositionNotifier.value != null) {
-      final pos = JourneyService.instance.currentPositionNotifier.value!;
-      _center = LatLng(pos.latitude, pos.longitude);
+    } else if (sharedPos != null) {
+      _center = LatLng(sharedPos.latitude, sharedPos.longitude);
       _isLoading = false;
     }
     _loadLocation();
+    LocationService.currentPositionNotifier.addListener(_onJourneyPositionChanged);
     JourneyService.instance.currentPositionNotifier.addListener(_onJourneyPositionChanged);
   }
 
   void _onJourneyPositionChanged() {
-    final pos = JourneyService.instance.currentPositionNotifier.value;
+    final pos = LocationService.currentPositionNotifier.value ??
+        JourneyService.instance.currentPositionNotifier.value;
     if (pos != null) {
       _updateUserPosition(LatLng(pos.latitude, pos.longitude));
     }
@@ -80,6 +83,15 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
 
   Future<void> _loadLocation() async {
     if (!mounted) {
+      return;
+    }
+
+    if (_center != null) {
+      setState(() {
+        _isLoading = false;
+        _permissionState = LocationPermissionState.granted;
+        _errorMessage = null;
+      });
       return;
     }
 
@@ -222,6 +234,7 @@ class _CurrentLocationMapCardState extends State<CurrentLocationMapCard> {
 
   @override
   void dispose() {
+    LocationService.currentPositionNotifier.removeListener(_onJourneyPositionChanged);
     JourneyService.instance.currentPositionNotifier.removeListener(_onJourneyPositionChanged);
     super.dispose();
   }

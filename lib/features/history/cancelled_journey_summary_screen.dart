@@ -9,9 +9,9 @@ import '../../core/theme/app_text_styles.dart';
 import '../../shared/widgets/app_bottom_navigation.dart';
 import '../../shared/widgets/primary_button.dart';
 
-/// Completed Journey Summary Screen matching the Norivo design system.
-class JourneySummaryScreen extends StatefulWidget {
-  const JourneySummaryScreen({
+/// Cancelled Journey Summary Screen matching the Norivo design system.
+class CancelledJourneySummaryScreen extends StatefulWidget {
+  const CancelledJourneySummaryScreen({
     super.key,
     this.record,
   });
@@ -19,10 +19,12 @@ class JourneySummaryScreen extends StatefulWidget {
   final JourneyHistoryRecord? record;
 
   @override
-  State<JourneySummaryScreen> createState() => _JourneySummaryScreenState();
+  State<CancelledJourneySummaryScreen> createState() =>
+      _CancelledJourneySummaryScreenState();
 }
 
-class _JourneySummaryScreenState extends State<JourneySummaryScreen> {
+class _CancelledJourneySummaryScreenState
+    extends State<CancelledJourneySummaryScreen> {
   static const List<String> _months = [
     'Jan',
     'Feb',
@@ -51,7 +53,7 @@ class _JourneySummaryScreenState extends State<JourneySummaryScreen> {
 
     if (records.isNotEmpty) {
       return records.firstWhere(
-        (r) => r.status.toLowerCase() == 'completed',
+        (r) => r.status.toLowerCase() == 'cancelled',
         orElse: () => records.first,
       );
     }
@@ -68,7 +70,7 @@ class _JourneySummaryScreenState extends State<JourneySummaryScreen> {
       totalDistanceMeters: 0.0,
       alarmThresholdMeters: 0.0,
       travelMode: 'Not available',
-      status: 'Completed',
+      status: 'Cancelled',
     );
   }
 
@@ -134,7 +136,7 @@ class _JourneySummaryScreenState extends State<JourneySummaryScreen> {
       valueListenable: JourneyHistoryService.instance.historyNotifier,
       builder: (context, records, _) {
         final rec = _getEffectiveRecord(records);
-        const completedColor = Color(0xFF10B981);
+        const cancelledColor = Color(0xFFF59E0B);
 
         final destName = rec.destinationName.trim().isNotEmpty
             ? rec.destinationName
@@ -211,7 +213,7 @@ class _JourneySummaryScreenState extends State<JourneySummaryScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Hero Graphic Card
+                        // Hero Graphic Card for Cancelled Journey
                         _buildHeroIllustrationCard(context),
 
                         const SizedBox(height: 14),
@@ -278,29 +280,29 @@ class _JourneySummaryScreenState extends State<JourneySummaryScreen> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              // Completed Badge
+                              // Cancelled Badge
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
                                   vertical: 5,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: completedColor.withValues(alpha: 0.12),
+                                  color: cancelledColor.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: const [
                                     Icon(
-                                      Icons.check_circle_rounded,
+                                      Icons.cancel_rounded,
                                       size: 13,
-                                      color: completedColor,
+                                      color: cancelledColor,
                                     ),
                                     SizedBox(width: 4),
                                     Text(
-                                      'Completed',
+                                      'Cancelled',
                                       style: TextStyle(
-                                        color: completedColor,
+                                        color: cancelledColor,
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -408,7 +410,7 @@ class _JourneySummaryScreenState extends State<JourneySummaryScreen> {
                                 icon: Icons.straighten_rounded,
                                 title: distanceStr,
                                 subtitle: 'Travel Distance',
-                                caption: 'Total distance',
+                                caption: 'Distance before cancel',
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -418,7 +420,7 @@ class _JourneySummaryScreenState extends State<JourneySummaryScreen> {
                                 icon: Icons.timer_rounded,
                                 title: durationStr,
                                 subtitle: 'Travel Duration',
-                                caption: 'Total time elapsed',
+                                caption: 'Time before cancel',
                               ),
                             ),
                           ],
@@ -499,15 +501,15 @@ class _JourneySummaryScreenState extends State<JourneySummaryScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF2563EB),
-            Color(0xFF1D4ED8),
-            Color(0xFF1E40AF),
+            Color(0xFFD97706),
+            Color(0xFFB45309),
+            Color(0xFF78350F),
           ],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x332563EB),
+            color: Color(0x33D97706),
             blurRadius: 16,
             offset: Offset(0, 6),
           ),
@@ -558,14 +560,14 @@ class _JourneySummaryScreenState extends State<JourneySummaryScreen> {
                     ],
                   ),
                   child: const Icon(
-                    Icons.task_alt_rounded,
-                    color: AppColors.primary,
+                    Icons.cancel_rounded,
+                    color: Color(0xFFD97706),
                     size: 38,
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Journey Completed Safely',
+                  'Journey Cancelled',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 17,
@@ -574,7 +576,7 @@ class _JourneySummaryScreenState extends State<JourneySummaryScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'You reached your destination',
+                  'Tracking stopped before arrival',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.85),
                     fontSize: 12,

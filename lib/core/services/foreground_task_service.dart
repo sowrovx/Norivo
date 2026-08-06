@@ -10,6 +10,7 @@ import '../models/journey_history_record.dart';
 import 'alarm_service.dart';
 import 'destination_search_service.dart';
 import 'journey_history_service.dart';
+import 'journey_notification_service.dart';
 import 'journey_service.dart';
 import 'settings_service.dart';
 
@@ -123,8 +124,10 @@ class JourneyTaskHandler extends TaskHandler {
   Future<void> _handleRecentAppsDismissal() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
       final raw = prefs.getString(JourneyService.keyActiveJourneyState);
       if (raw != null && raw.isNotEmpty) {
+        await prefs.remove(JourneyService.keyActiveJourneyState);
         final jsonMap = jsonDecode(raw) as Map<String, dynamic>;
         final state = ActiveJourneyState.fromJson(jsonMap);
         final endTime = DateTime.now();
@@ -132,7 +135,7 @@ class JourneyTaskHandler extends TaskHandler {
         final travelMode = await SettingsService.instance.getTravelMode();
 
         final record = JourneyHistoryRecord(
-          id: '${DateTime.now().millisecondsSinceEpoch}',
+          id: JourneyHistoryRecord.generateUniqueId(),
           destinationName: state.destinationPlace.name,
           destinationAddress: state.destinationPlace.address,
           destinationLatitude: state.destinationPlace.latitude,
@@ -146,12 +149,15 @@ class JourneyTaskHandler extends TaskHandler {
           status: 'Cancelled',
         );
 
+        debugPrint(
+          '[ForegroundTaskHandler] Saving JourneyHistoryRecord with final status: "Cancelled" for destination: "${state.destinationPlace.name}"',
+        );
         await JourneyHistoryService.instance.addRecord(record);
-        debugPrint('[ForegroundTaskHandler] Saved journey history record with status "Cancelled".');
+      } else {
+        debugPrint(
+          '[ForegroundTaskHandler] Active journey already cleared or saved. Skipping duplicate record creation.',
+        );
       }
-
-      await prefs.remove(JourneyService.keyActiveJourneyState);
-      debugPrint('[ForegroundTaskHandler] Cleared active journey state from SharedPreferences on task removal.');
     } catch (e) {
       debugPrint('[ForegroundTaskHandler] Error clearing active journey state on task removal: $e');
     }
@@ -231,15 +237,20 @@ class ForegroundTaskService {
     try {
       await init();
 
-      final title = 'Heading to ${destination.name}';
+      final title = JourneyNotificationService.buildTitle(destination);
       final text = initialDistanceMeters != null && initialDistanceMeters > 0
           ? '${DestinationSearchService.formatDistance(initialDistanceMeters)} • Tracking location'
           : 'Tracking location in background to wake you up before arrival.';
 
-      if (await FlutterForegroundTask.isRunningService) {
+      final isRunning = await FlutterForegroundTask.isRunningService
+          .timeout(const Duration(milliseconds: 200), onTimeout: () => false);
+      if (isRunning) {
         await FlutterForegroundTask.updateService(
           notificationTitle: title,
           notificationText: text,
+        ).timeout(
+          const Duration(milliseconds: 200),
+          onTimeout: () => throw TimeoutException('ForegroundTask updateService timeout'),
         );
         return;
       }
@@ -249,6 +260,9 @@ class ForegroundTaskService {
         notificationTitle: title,
         notificationText: text,
         callback: _startCallback,
+      ).timeout(
+        const Duration(milliseconds: 200),
+        onTimeout: () => throw TimeoutException('ForegroundTask startService timeout'),
       );
     } catch (e) {
       debugPrint('ForegroundTaskService startService error: $e');
@@ -262,10 +276,15 @@ class ForegroundTaskService {
     if (defaultTargetPlatform != TargetPlatform.android) return;
 
     try {
-      if (await FlutterForegroundTask.isRunningService) {
+      final isRunning = await FlutterForegroundTask.isRunningService
+          .timeout(const Duration(milliseconds: 200), onTimeout: () => false);
+      if (isRunning) {
         await FlutterForegroundTask.updateService(
           notificationTitle: title,
           notificationText: text,
+        ).timeout(
+          const Duration(milliseconds: 200),
+          onTimeout: () => throw TimeoutException('ForegroundTask updateNotification timeout'),
         );
       }
     } catch (e) {
@@ -277,8 +296,13 @@ class ForegroundTaskService {
     if (defaultTargetPlatform != TargetPlatform.android) return;
 
     try {
-      if (await FlutterForegroundTask.isRunningService) {
-        await FlutterForegroundTask.stopService();
+      final isRunning = await FlutterForegroundTask.isRunningService
+          .timeout(const Duration(milliseconds: 200), onTimeout: () => false);
+      if (isRunning) {
+        await FlutterForegroundTask.stopService().timeout(
+          const Duration(milliseconds: 200),
+          onTimeout: () => throw TimeoutException('ForegroundTask stopService timeout'),
+        );
       }
     } catch (e) {
       debugPrint('ForegroundTaskService stopService error: $e');

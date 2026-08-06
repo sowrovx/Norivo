@@ -43,8 +43,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   void _openSummary(JourneyHistoryRecord record) {
+    final routeName = record.status.toLowerCase() == 'cancelled'
+        ? AppRouter.cancelledJourneySummary
+        : AppRouter.journeySummary;
     Navigator.of(context).pushNamed(
-      AppRouter.journeySummary,
+      routeName,
       arguments: record,
     );
   }

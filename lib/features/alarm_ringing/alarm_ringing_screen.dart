@@ -54,6 +54,31 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen>
     super.dispose();
   }
 
+  bool _isStoppingAlarm = false;
+
+  Future<void> _stopAlarmAndNavigate() async {
+    if (_isStoppingAlarm) return;
+    _isStoppingAlarm = true;
+
+    FocusScope.of(context).unfocus();
+    debugPrint(
+      '[AlarmRingingScreen] Stopping alarm and completing journey.',
+    );
+    final record = await JourneyService.instance.stopJourney(
+      explicitStatus: 'Completed',
+    );
+    if (!mounted) return;
+
+    final routeName = record != null && record.status.toLowerCase() == 'cancelled'
+        ? AppRouter.cancelledJourneySummary
+        : AppRouter.journeySummary;
+
+    Navigator.of(context).pushReplacementNamed(
+      routeName,
+      arguments: record,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -144,27 +169,14 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen>
                 const SizedBox(height: 24),
                 PrimaryButton(
                   label: 'Stop Alarm',
-                  onPressed: () async {
-                    FocusScope.of(context).unfocus();
-                    await JourneyService.instance.stopJourney();
-                    if (!context.mounted) return;
-                    Navigator.of(
-                      context,
-                    ).pushNamedAndRemoveUntil(AppRouter.home, (route) => false);
-                  },
+                  onPressed: _stopAlarmAndNavigate,
                   icon: Icons.stop_circle_rounded,
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () async {
-                      await JourneyService.instance.stopJourney();
-                      if (!context.mounted) return;
-                      Navigator.of(
-                        context,
-                      ).pushNamedAndRemoveUntil(AppRouter.home, (route) => false);
-                    },
+                    onPressed: _stopAlarmAndNavigate,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
                       side: BorderSide(color: Theme.of(context).dividerColor, width: 1),

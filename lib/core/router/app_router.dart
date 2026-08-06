@@ -11,6 +11,7 @@ import '../../features/alarm_ringing/alarm_ringing_screen.dart';
 import '../../features/alarm_setup/alarm_setup_screen.dart';
 import '../../features/destination_search/destination_search_screen.dart';
 import '../../features/history/history_screen.dart';
+import '../../features/history/cancelled_journey_summary_screen.dart';
 import '../../features/history/journey_summary_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/saved_places/saved_places_screen.dart';
@@ -29,6 +30,7 @@ class AppRouter {
   static const String settings = '/settings';
   static const String history = '/history';
   static const String journeySummary = '/journey-summary';
+  static const String cancelledJourneySummary = '/cancelled-journey-summary';
   static const String savedPlaces = '/saved-places';
 
   static Route<dynamic> onGenerateRoute(RouteSettings routeSettings) {
@@ -82,17 +84,23 @@ class AppRouter {
         return MaterialPageRoute<void>(
           builder: (_) => const SavedPlacesScreen(),
         );
+      case cancelledJourneySummary:
+        final record = routeSettings.arguments;
+        final journeyRecord = record is JourneyHistoryRecord ? record : null;
+        return MaterialPageRoute<void>(
+          builder: (_) => CancelledJourneySummaryScreen(record: journeyRecord),
+        );
       case journeySummary:
         final record = routeSettings.arguments;
-        if (record is JourneyHistoryRecord) {
+        final journeyRecord = record is JourneyHistoryRecord ? record : null;
+        if (journeyRecord != null &&
+            journeyRecord.status.toLowerCase() == 'cancelled') {
           return MaterialPageRoute<void>(
-            builder: (_) => JourneySummaryScreen(record: record),
+            builder: (_) => CancelledJourneySummaryScreen(record: journeyRecord),
           );
         }
         return MaterialPageRoute<void>(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Invalid Journey History Record')),
-          ),
+          builder: (_) => JourneySummaryScreen(record: journeyRecord),
         );
       default:
         return MaterialPageRoute<void>(
